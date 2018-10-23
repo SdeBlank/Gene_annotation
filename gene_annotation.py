@@ -45,7 +45,6 @@ def overlap_ENSEMBLE(REGIONS):
             else:
                 TEMP_SV_START=SV_START
                 TEMP_SV_END=TEMP_SV_START
-
                 while TEMP_SV_END < SV_END:
                     TEMP_SV_END+=4999999
                     if TEMP_SV_END > SV_END:
