@@ -3,12 +3,12 @@ import re
 import json
 import vcf as pyvcf
 
+
 SERVER_CASES="https://api.gdc.cancer.gov/cases"
 FILTERS_CASES={"op":"AND","content":[
-                        {"op":"in","content":{"field":"primary_site","value":"Ovary"}},
-                        {"op":"in","content":{"field":"project.project_id","value":["TCGA-OV", "TCGA-SARC"]}}
+                        {"op":"in","content":{"field":"primary_site","value":"Prostate gland"}},
+                        {"op":"in","content":{"field":"project.project_id","value":["TCGA-PRAD"]}}
                         ]}
-                        #{"op":"in","content":{"field":"project.project_id","value":["TCGA-OV", "TCGA_SARC"]}}
 PARAMS_CASES = {
     "filters": json.dumps(FILTERS_CASES),
     "format": "JSON",
@@ -23,6 +23,63 @@ CASES=[]
 for hit in hits_cases:
     CASES.append(hit["submitter_id"])
 print ("Total number of cases", len(CASES))
+
+###################################################################################
+SERVER_CASETYPE="https://api.gdc.cancer.gov/cases"
+FILTERS_CASETYPE={"op":"in","content":{"field":"submitter_id","value":CASES}}
+PARAMS_CASETYPE = {
+    "filters": json.dumps(FILTERS_CASETYPE),
+    "format": "JSON",
+    "expand": "files",
+    "size": "100"
+    }
+request_casetype=requests.get(SERVER_CASETYPE, params=PARAMS_CASETYPE)
+response_casetype=request_casetype.text
+print(response_casetype)
+response_casetype=json.loads(response_casetype)
+
+hits_casetype=response_casetype["data"]["hits"][0]["files"]
+# CASE_NUMBER=0
+# for count, case in enumerate(CASES):             ####################################   #REMOVE COUNT!!!
+#     print (count+1)
+#     FILTERS_CASETYPE={"op":"in","content":{"field":"submitter_id","value":case}}
+#     PARAMS_CASETYPE = {
+#         "filters": json.dumps(FILTERS_CASETYPE),
+#         "format": "JSON",
+#         "expand": "files",
+#         "size": "100"
+#         }
+#     request_casetype=requests.get(SERVER_CASETYPE, params=PARAMS_CASETYPE)
+#     response_casetype=request_casetype.text
+#     response_casetype=json.loads(response_casetype)
+#     hits_casetype=response_casetype["data"]["hits"][0]["files"]
+#     for files in hits_casetype:
+#         file_type=files['data_category']
+#         if file_type == "Simple Nucleotide Variation":
+#             CASE_NUMBER+=1
+#             break
+# print ("Number of cases with SNVs", CASE_NUMBER)
+
+# SERVER_CASES="https://api.gdc.cancer.gov/cases"
+# FILTERS_CASES={"op":"AND","content":[
+#                         {"op":"in","content":{"field":"primary_site","value":"Ovary"}},
+#                         {"op":"in","content":{"field":"project.project_id","value":["TCGA-OV", "TCGA-SARC"]}}
+#                         ]}
+#                         #{"op":"in","content":{"field":"project.project_id","value":["TCGA-OV", "TCGA_SARC"]}}
+# PARAMS_CASES = {
+#     "filters": json.dumps(FILTERS_CASES),
+#     "format": "JSON",
+#     "size": "25000"
+#     }
+#
+# request_cases=requests.get(SERVER_CASES, params=PARAMS_CASES)
+# response_cases=request_cases.text
+# response_cases=json.loads(response_cases)
+# hits_cases=response_cases["data"]["hits"]
+# CASES=[]
+# for hit in hits_cases:
+#     CASES.append(hit["submitter_id"])
+# print ("Total number of cases", len(CASES))
 
 # #print(float(int(7)/int(3)))
 # CANCER_TYPE=["TCGA-OV", "TCGA-SARC"]

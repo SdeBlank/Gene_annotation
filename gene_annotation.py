@@ -247,7 +247,7 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
     SERVER_CASETYPE="https://api.gdc.cancer.gov/cases"
 
     CASE_NUMBER=0
-    for count, case in enumerate(CASES):             ####################################   #REMOVE COUNT!!!
+    for count, case in enumerate(CASES):            !!!!!!!!! CALL CASES IN LIST <-- QUERY TOO LONG!!!!!!!!!!!!
         print (count+1)
         FILTERS_CASETYPE={"op":"in","content":{"field":"submitter_id","value":case}}
         PARAMS_CASETYPE = {
@@ -318,7 +318,6 @@ def vcf_annotate_pros_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
             record.INFO["PROSGENE"]=len(OVERLAP)
             VCF_WRITER.write_record(record)
             if len(OVERLAP)>0:
-                #record.add_info("PROSGENE", len(OVERLAP))
                 if "SVLEN" in record.INFO:
                     print (str(record.ID) + "\t LENGTH=" + str(record.INFO["SVLEN"][0]) + "\t" + str(record.ALT[0]) + "\t" + "PROSGENES=" + str(len(OVERLAP)))
                 else:
