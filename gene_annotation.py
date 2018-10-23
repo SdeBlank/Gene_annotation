@@ -203,7 +203,8 @@ def annotate_genes_vcf(INPUT_VCF, OUTPUT_VCF, ENSEMBLE_GENES):
 
 def create_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
-    SERVER_CASES="https://api.gdc.cancer.gov/projects"
+    #SERVER_CASES="https://api.gdc.cancer.gov/projects"
+    SERVER_CASES="https://api.gdc.cancer.gov/analysis/mutated_cases_count_by_project"
     SERVER_GENES="https://api.gdc.cancer.gov/analysis/top_mutated_genes_by_project"
 
     FIELDS_GENES = [
@@ -213,7 +214,7 @@ def create_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
     FIELDS_GENES = ",".join(FIELDS_GENES)
 
-    FILTERS_CASES={"op":"AND","content":[{"op":"in","content":{"field":"project_id","value":[CANCER_TYPE]}}]}
+    FILTERS_CASES={"op":"AND","content":[{"op":"in","content":{"field":"project.project_id","value":CANCER_TYPE}}]}
     FILTERS_GENES={"op":"AND","content":[{"op":"in","content":{"field":"case.project.project_id","value":[CANCER_TYPE]}}]}
 
     PARAMS_GENES = {
@@ -225,29 +226,28 @@ def create_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
     PARAMS_CASES = {
         "filters": json.dumps(FILTERS_CASES),
-        "expand" : "summary",
         "format": "JSON",
-        "size": "5"
+        "size": "0"
         }
 
     request_cases=requests.get(SERVER_CASES, params=PARAMS_CASES)
     response_cases=request_cases.text
     response_cases=json.loads(response_cases)
-    hits_cases=response_cases['data']["hits"]
-    CASE_NUMBER=int(hits_cases[0]['summary']['case_count'])
+    hits_cases=response_cases["aggregations"]["projects"]["buckets"]
+    if len(hits_cases) == 1:
+        hits_cases[0]["case_summary"]["case_with_ssm"]["doc_count"]
+        CASE_NUMBER=int(hits_cases[0]["case_summary"]["case_with_ssm"]["doc_count"])
+    else:
+        print  ("ERROR: error while getting case data")
 
     request_genes=requests.get(SERVER_GENES, params=PARAMS_GENES)
     response_genes=request_genes.text
     response_genes=json.loads(response_genes)
     hits_genes=response_genes['data']["hits"]
-    print (CASE_NUMBER)
 
     SIGNIFICANT_GENES=[]
     for HIT in hits_genes:
-        print (float(HIT["_score"])/float(CASE_NUMBER))
-        print (MIN_SUPPORT)
-        if float(HIT["_score"])/float(CASE_NUMBER)>=MIN_SUPPORT:
-            print ("JA")
+        if float(HIT["_score"])/float(CASE_NUMBER)>=float(MIN_SUPPORT):
             SIGNIFICANT_GENES.append(HIT["gene_id"])
     return SIGNIFICANT_GENES
 
@@ -288,16 +288,9 @@ def vcf_annotate_pros_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
 
 FLANK=args.flank
 MIN_SUPPORT=args.support
-
-#KNOWN_GENES="/home/cog/sdeblank/Documents/sharc/pros_genes_min5.json"
 VCF_IN=args.vcf
-#VCF_IN="/home/cog/sdeblank/Documents/sharc/SURVIVOR.vcf"
-#VCF_IN="/home/cog/sdeblank/Documents/sharc/EMC026T.nanosv.SHARC.primers.vcf"
-
-
-#VCF_ANNOTATED=VCF_IN.replace(".vcf", "_gene_annotated.vcf")
 VCF_GENE_SELECTED=VCF_IN.replace(".vcf", "_gene_selection.vcf")
-#BED=VCF_IN.replace(".vcf", ".bed")
+
 
 REGIONS=regions_from_vcf(VCF_IN)
 KNOWN_GENES=create_gene_list("TCGA-PRAD", MIN_SUPPORT)
