@@ -287,7 +287,7 @@ MIN_SUPPORT=int(args.support)
 VCF_IN=args.vcf
 #VCF_IN="/home/cog/sdeblank/Documents/sharc/SURVIVOR.vcf"
 #VCF_IN="/home/cog/sdeblank/Documents/sharc/EMC026T.nanosv.SHARC.primers.vcf"
-#VCF_IN="/home/cog/sdeblank/Documents/sharc/test.vcf"
+
 
 #VCF_ANNOTATED=VCF_IN.replace(".vcf", "_gene_annotated.vcf")
 VCF_GENE_SELECTED=VCF_IN.replace(".vcf", "_gene_selection.vcf")
