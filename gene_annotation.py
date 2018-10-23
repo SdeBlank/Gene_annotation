@@ -203,41 +203,67 @@ def annotate_genes_vcf(INPUT_VCF, OUTPUT_VCF, ENSEMBLE_GENES):
 
 def create_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
-    # SERVER_PROJECTS="https://api.gdc.cancer.gov/projects"
-    # FILTERS_PROJECTS={"op":"in","content":{"field":"primary_site","value":"Prostate gland"}}
-    # PARAMS_PROJECTS = {
-    #     "filters": json.dumps(FILTERS_PROJECTS),
-    #     "format": "JSON",
-    #     "size": "100"
-    #     }
-    #
-    # request_projects=requests.get(SERVER_PROJECTS, params=PARAMS_PROJECTS)
-    # response_projects=request_projects.text
-    # response_projects=json.loads(response_projects)
-    # hits_projects=response_projects["data"]["hits"]
-    # PROJECTS=[]
-    # for projects in hits_projects:
-    #     PROJECTS.append(projects["project_id"])
-    #
-    # print (PROJECTS)
+    SERVER_PROJECTS="https://api.gdc.cancer.gov/projects"
+    FILTERS_PROJECTS={"op":"in","content":{"field":"primary_site","value":"Prostate gland"}}
+    PARAMS_PROJECTS = {
+        "filters": json.dumps(FILTERS_PROJECTS),
+        "format": "JSON",
+        "size": "1000"
+        }
 
-    SERVER_CASES="https://api.gdc.cancer.gov/analysis/mutated_cases_count_by_project"
-    FILTERS_CASES={"op":"in","content":{"field":"project.project_id","value":CANCER_TYPE}}
+    request_projects=requests.get(SERVER_PROJECTS, params=PARAMS_PROJECTS)
+    response_projects=request_projects.text
+    response_projects=json.loads(response_projects)
+    hits_projects=response_projects["data"]["hits"]
+    PROJECTS=[]
+    for project in hits_projects:
+        if "TCGA" in project['project_id']:
+            PROJECTS.append(project["project_id"])
+    print (PROJECTS)
+
+###################################################################################
+    SERVER_CASES="https://api.gdc.cancer.gov/cases"
+    FILTERS_CASES={"op":"in","content":{"field":"primary_site","value":"Prostate gland"}}
     PARAMS_CASES = {
         "filters": json.dumps(FILTERS_CASES),
         "format": "JSON",
-        "size": "0"
+        "size": "1000"
         }
 
     request_cases=requests.get(SERVER_CASES, params=PARAMS_CASES)
     response_cases=request_cases.text
     response_cases=json.loads(response_cases)
-    hits_cases=response_cases["aggregations"]["projects"]["buckets"]
-    CASE_NUMBER=0
-    for case in hits_cases:
-        CASE_NUMBER+=int(hits_cases[0]["case_summary"]["case_with_ssm"]["doc_count"])
+    hits_cases=response_cases["data"]["hits"]
+    CASES=[]
+    for hit in hits_cases:
+        CASES.append(hit["submitter_id"])
+    print (len(CASES))
 
+###################################################################################
+    SERVER_CASETYPE="https://api.gdc.cancer.gov/cases"
+
+    CASE_NUMBER=0
+    for count, case in enumerate(CASES):
+        print (count+1)
+        FILTERS_CASETYPE={"op":"in","content":{"field":"submitter_id","value":case}}
+        PARAMS_CASETYPE = {
+            "filters": json.dumps(FILTERS_CASETYPE),
+            "format": "JSON",
+            "expand": "files",
+            "size": "100"
+            }
+        request_casetype=requests.get(SERVER_CASETYPE, params=PARAMS_CASETYPE)
+        response_casetype=request_casetype.text
+        response_casetype=json.loads(response_casetype)
+        hits_casetype=response_casetype["data"]["hits"][0]["files"]
+        for files in hits_casetype:
+            file_type=files['data_category']
+            if file_type == "Simple Nucleotide Variation":
+                CASE_NUMBER+=1
+                break
     print (CASE_NUMBER)
+
+###################################################################################
     SERVER_GENES="https://api.gdc.cancer.gov/analysis/top_mutated_genes_by_project"
     FILTERS_GENES={"op":"in","content":{"field":"case.project.project_id","value":[CANCER_TYPE]}}
     PARAMS_GENES = {
@@ -298,7 +324,7 @@ VCF_IN=args.vcf
 VCF_GENE_SELECTED=VCF_IN.replace(".vcf", "_gene_selection.vcf")
 
 
-REGIONS=regions_from_vcf(VCF_IN)
+# REGIONS=regions_from_vcf(VCF_IN)
 KNOWN_GENES=create_gene_list("TCGA-PRAD", MIN_SUPPORT)
-OVERLAP=overlap_ENSEMBLE(REGIONS)
-vcf_annotate_pros_genes_overlap(VCF_IN, VCF_GENE_SELECTED, KNOWN_GENES, OVERLAP)
+# OVERLAP=overlap_ENSEMBLE(REGIONS)
+# vcf_annotate_pros_genes_overlap(VCF_IN, VCF_GENE_SELECTED, KNOWN_GENES, OVERLAP)

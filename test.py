@@ -7,7 +7,7 @@ import vcf as pyvcf
 CANCER_TYPE=["TCGA-OV", "TCGA-SARC"]
 
 # SERVER_CASES="https://api.gdc.cancer.gov/cases"
-SERVER_CASES="https://api.gdc.cancer.gov/analysis/mutated_cases_count_by_project"
+SERVER_CASES="https://api.gdc.cancer.gov/projects"
 SERVER_GENES="https://api.gdc.cancer.gov/analysis/top_mutated_genes_by_project"
 
 FIELDS_GENES = [
@@ -26,8 +26,10 @@ FIELDS_CASES = ",".join(FIELDS_CASES)
 
 #FILTERS_CASES={"op":"AND","content":[{"op":"in","content":{"field":"cases.primary_site","value":["Prostate gland"]}}]}
 # FILTERS_CASES={"op":"in","content":{"field":"primary_site","value":"Prostate gland"}}
-FILTERS_CASES={"op":"AND","content":[{"op":"in","content":{"field":"project.project_id","value":"TCGA-OV"}}]}
-FILTERS_GENES={"op":"AND","content":[{"op":"in","content":{"field":"case.project.project_id","value":[CANCER_TYPE]}}]}
+FILTERS_CASES={"op":"in","content":{"field":"project_id","value":["TCGA-OV","TCGA-PRAD"]}}
+FILTERS_GENES={"op":"AND","content":[
+                                {"op":"in","content":{"field":"case.project.project_id","value":["TCGA-PRAD", "FM-AD"]}},
+                                {"op":"in","content":{"field":"case.project.primary_site","value":["Prostate gland"]}}]}
 
 PARAMS_GENES = {
     "filters": json.dumps(FILTERS_GENES),
@@ -45,21 +47,22 @@ PARAMS_CASES = {
 request_cases=requests.get(SERVER_CASES, params=PARAMS_CASES)
 response_cases=request_cases.text
 response_cases=json.loads(response_cases)
-hits_cases=response_cases["aggregations"]["projects"]["buckets"]
-CASE_NUMBER=0
-for case in hits_cases:
-    CASE_NUMBER+=int(hits_cases[0]["case_summary"]["case_with_ssm"]["doc_count"])
-#print(hits_cases)
-#print (len(hits_cases))
-# CASE_NUMBER=int(hits_cases[0]['summary']['case_count'])
-print(CASE_NUMBER)
+#print (response_cases)
+# hits_cases=response_cases["aggregations"]["projects"]["buckets"]
+# CASE_NUMBER=0
+# for case in hits_cases:
+#     CASE_NUMBER+=int(hits_cases[0]["case_summary"]["case_with_ssm"]["doc_count"])
+# #print(hits_cases)
+# #print (len(hits_cases))
+# # CASE_NUMBER=int(hits_cases[0]['summary']['case_count'])
+# print(CASE_NUMBER)
 
 request_genes=requests.get(SERVER_GENES, params=PARAMS_GENES)
 response_genes=request_genes.text
 response_genes=json.loads(response_genes)
-#print (response_genes)
+print (response_genes)
 hits_genes=response_genes['data']["hits"]
-
+print (hits_genes)
 
 # a=0
 # SIGNIFICANT_GENES=[]
