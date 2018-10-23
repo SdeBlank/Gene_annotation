@@ -3,75 +3,96 @@ import re
 import json
 import vcf as pyvcf
 
-#print(float(int(7)/int(3)))
-CANCER_TYPE=["TCGA-OV", "TCGA-SARC"]
-
-# SERVER_CASES="https://api.gdc.cancer.gov/cases"
-SERVER_CASES="https://api.gdc.cancer.gov/projects"
-SERVER_GENES="https://api.gdc.cancer.gov/analysis/top_mutated_genes_by_project"
-
-FIELDS_GENES = [
-    "gene_id",
-    "symbol"
-    ]
-
-FIELDS_GENES = ",".join(FIELDS_GENES)
-
-FIELDS_CASES = [
-    "project_id"
-    ]
-
-FIELDS_CASES = ",".join(FIELDS_CASES)
-
-#FILTERS_CASES={"op":"AND","content":[{"op":"in","content":{"field":"cases.primary_site","value":["Prostate gland"]}}]}
-# FILTERS_CASES={"op":"in","content":{"field":"primary_site","value":"Prostate gland"}}
-FILTERS_CASES={"op":"in","content":{"field":"project_id","value":["TCGA-OV","TCGA-SARC"]}}
-FILTERS_GENES={"op":"AND","content":[
-                                {"op":"in","content":{"field":"case.project.primary_site","value":["Prostate gland"]}}    #,
-                                #{"op":"in","content":{"field":"cases.project.project_id","value":["TCGA-OV", "TCGA-SARC"]}}
-                                ]}
-
-PARAMS_GENES = {
-    "filters": json.dumps(FILTERS_GENES),
-    "fields": FIELDS_GENES,
-    "format": "JSON",
-    "size": "10000"
-    }
-
+SERVER_CASES="https://api.gdc.cancer.gov/cases"
+FILTERS_CASES={"op":"AND","content":[
+                        {"op":"in","content":{"field":"primary_site","value":"Ovary"}},
+                        {"op":"in","content":{"field":"project.project_id","value":["TCGA-OV", "TCGA-SARC"]}}
+                        ]}
+                        #{"op":"in","content":{"field":"project.project_id","value":["TCGA-OV", "TCGA_SARC"]}}
 PARAMS_CASES = {
     "filters": json.dumps(FILTERS_CASES),
     "format": "JSON",
-    "size": "100"
+    "size": "25000"
     }
 
 request_cases=requests.get(SERVER_CASES, params=PARAMS_CASES)
 response_cases=request_cases.text
 response_cases=json.loads(response_cases)
-#print (response_cases)
-# hits_cases=response_cases["aggregations"]["projects"]["buckets"]
-# CASE_NUMBER=0
-# for case in hits_cases:
-#     CASE_NUMBER+=int(hits_cases[0]["case_summary"]["case_with_ssm"]["doc_count"])
-# #print(hits_cases)
-# #print (len(hits_cases))
-# # CASE_NUMBER=int(hits_cases[0]['summary']['case_count'])
-# print(CASE_NUMBER)
+hits_cases=response_cases["data"]["hits"]
+CASES=[]
+for hit in hits_cases:
+    CASES.append(hit["submitter_id"])
+print ("Total number of cases", len(CASES))
 
-request_genes=requests.get(SERVER_GENES, params=PARAMS_GENES)
-response_genes=request_genes.text
-response_genes=json.loads(response_genes)
-print (response_genes)
-hits_genes=response_genes['data']["hits"]
-#print (hits_genes)
-
-a=0
-SIGNIFICANT_GENES=[]
-for HIT in hits_genes:
-    print (HIT)
-    if int(HIT["_score"])>=5:
-        a+=1
-        SIGNIFICANT_GENES.append(HIT)
-print (a)
+# #print(float(int(7)/int(3)))
+# CANCER_TYPE=["TCGA-OV", "TCGA-SARC"]
+#
+# # SERVER_CASES="https://api.gdc.cancer.gov/cases"
+# SERVER_CASES="https://api.gdc.cancer.gov/projects"
+# SERVER_GENES="https://api.gdc.cancer.gov/analysis/top_mutated_genes_by_project"
+#
+# FIELDS_GENES = [
+#     "gene_id",
+#     "symbol"
+#     ]
+#
+# FIELDS_GENES = ",".join(FIELDS_GENES)
+#
+# FIELDS_CASES = [
+#     "project_id"
+#     ]
+#
+# FIELDS_CASES = ",".join(FIELDS_CASES)
+#
+# #FILTERS_CASES={"op":"AND","content":[{"op":"in","content":{"field":"cases.primary_site","value":["Prostate gland"]}}]}
+# # FILTERS_CASES={"op":"in","content":{"field":"primary_site","value":"Prostate gland"}}
+# FILTERS_CASES={"op":"in","content":{"field":"project_id","value":["TCGA-OV","TCGA-SARC"]}}
+# FILTERS_GENES={"op":"AND","content":[
+#                                 {"op":"in","content":{"field":"case.primary_site","value":"Ovary"}}    ,
+#                                 {"op":"in","content":{"field":"cases.project.project_id","value":["TCGA-OV", "TCGA-SARC"]}}
+#                                 ]}
+#
+# PARAMS_GENES = {
+#     "filters": json.dumps(FILTERS_GENES),
+#     "fields": FIELDS_GENES,
+#     "format": "JSON",
+#     "size": "10"
+#     }
+#
+# PARAMS_CASES = {
+#     "filters": json.dumps(FILTERS_CASES),
+#     "format": "JSON",
+#     "size": "100"
+#     }
+#
+# request_cases=requests.get(SERVER_CASES, params=PARAMS_CASES)
+# response_cases=request_cases.text
+# response_cases=json.loads(response_cases)
+# #print (response_cases)
+# # hits_cases=response_cases["aggregations"]["projects"]["buckets"]
+# # CASE_NUMBER=0
+# # for case in hits_cases:
+# #     CASE_NUMBER+=int(hits_cases[0]["case_summary"]["case_with_ssm"]["doc_count"])
+# # #print(hits_cases)
+# # #print (len(hits_cases))
+# # # CASE_NUMBER=int(hits_cases[0]['summary']['case_count'])
+# # print(CASE_NUMBER)
+#
+# request_genes=requests.get(SERVER_GENES, params=PARAMS_GENES)
+# response_genes=request_genes.text
+# response_genes=json.loads(response_genes)
+# print (response_genes)
+# hits_genes=response_genes['data']["hits"]
+# #print (hits_genes)
+#
+# a=0
+# SIGNIFICANT_GENES=[]
+# for HIT in hits_genes:
+#     print (HIT)
+#     if int(HIT["_score"])>=5:
+#         a+=1
+#         SIGNIFICANT_GENES.append(HIT)
+# print (a)
 
 
 # VCF_IN="/home/cog/sdeblank/Documents/sharc/EMC026T.nanosv.SHARC.primers.vcf"

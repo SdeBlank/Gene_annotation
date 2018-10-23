@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser(description='Put here a description.')
 parser.add_argument('vcf', help='VCF file')
 parser.add_argument('-f', '--flank', default=200, type=int, help='Flank [default: 200]')
 parser.add_argument('-s', '--support', default=0.01, type=float, help='Minimal percentage of cancer patients supporting the mutated gene [default: 0.01]')
+parser.add_argument('-c', '--cancertype', default="Prostate gland", type=str, help='Primary site of cancer [default=Prostate gland]')
 
 args = parser.parse_args()
 
@@ -201,10 +202,10 @@ def annotate_genes_vcf(INPUT_VCF, OUTPUT_VCF, ENSEMBLE_GENES):
                 record.add_info("GENES", ",".join(ENSEMBLE_GENES[record.ID]["GENES"]))
             VCF_WRITER.write_record(record)
 
-def create_gene_list(CANCER_TYPE, MIN_SUPPORT):
+def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
     SERVER_PROJECTS="https://api.gdc.cancer.gov/projects"
-    FILTERS_PROJECTS={"op":"in","content":{"field":"primary_site","value":"Prostate gland"}}
+    FILTERS_PROJECTS={"op":"in","content":{"field":"primary_site","value":CANCER_TYPE}}
     PARAMS_PROJECTS = {
         "filters": json.dumps(FILTERS_PROJECTS),
         "format": "JSON",
@@ -223,11 +224,14 @@ def create_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
 ###################################################################################
     SERVER_CASES="https://api.gdc.cancer.gov/cases"
-    FILTERS_CASES={"op":"in","content":{"field":"primary_site","value":"Prostate gland"}}
+    FILTERS_CASES={"op":"AND","content":[
+                            {"op":"in","content":{"field":"primary_site","value":CANCER_TYPE}},
+                            {"op":"in","content":{"field":"project.project_id","value":PROJECTS}}
+                            ]}
     PARAMS_CASES = {
         "filters": json.dumps(FILTERS_CASES),
         "format": "JSON",
-        "size": "1000"
+        "size": "25000"
         }
 
     request_cases=requests.get(SERVER_CASES, params=PARAMS_CASES)
@@ -237,13 +241,13 @@ def create_gene_list(CANCER_TYPE, MIN_SUPPORT):
     CASES=[]
     for hit in hits_cases:
         CASES.append(hit["submitter_id"])
-    print (len(CASES))
+    print ("Total number of cases", len(CASES))
 
 ###################################################################################
     SERVER_CASETYPE="https://api.gdc.cancer.gov/cases"
 
     CASE_NUMBER=0
-    for count, case in enumerate(CASES):
+    for count, case in enumerate(CASES):             ####################################   #REMOVE COUNT!!!
         print (count+1)
         FILTERS_CASETYPE={"op":"in","content":{"field":"submitter_id","value":case}}
         PARAMS_CASETYPE = {
@@ -261,22 +265,33 @@ def create_gene_list(CANCER_TYPE, MIN_SUPPORT):
             if file_type == "Simple Nucleotide Variation":
                 CASE_NUMBER+=1
                 break
-    print (CASE_NUMBER)
+    print ("Number of cases with SNVs", CASE_NUMBER)
 
 ###################################################################################
     SERVER_GENES="https://api.gdc.cancer.gov/analysis/top_mutated_genes_by_project"
-    FILTERS_GENES={"op":"in","content":{"field":"case.project.project_id","value":[CANCER_TYPE]}}
+    FILTERS_GENES={"op":"AND","content":[
+                                {"op":"in","content":{"field":"case.primary_site","value":CANCER_TYPE}}    ,
+                                {"op":"in","content":{"field":"cases.project.project_id","value":PROJECTS}}
+                                ]}
+    FIELDS_GENES = [
+        "gene_id",
+        "symbol"
+        ]
+
+    FIELDS_GENES = ",".join(FIELDS_GENES)
+
     PARAMS_GENES = {
         "filters": json.dumps(FILTERS_GENES),
+        "fields": FIELDS_GENES,
         "format": "JSON",
-        "size": "1000"
+        "size": "100000"
         }
 
     request_genes=requests.get(SERVER_GENES, params=PARAMS_GENES)
     response_genes=request_genes.text
     response_genes=json.loads(response_genes)
     hits_genes=response_genes['data']["hits"]
-
+    print (hits_genes[0:10])
     SIGNIFICANT_GENES=[]
     for HIT in hits_genes:
         if float(HIT["_score"])/float(CASE_NUMBER)>=float(MIN_SUPPORT):
@@ -321,11 +336,12 @@ def vcf_annotate_pros_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
 
 FLANK=args.flank
 MIN_SUPPORT=args.support
+CANCERTYPE=args.cancertype
+
 VCF_IN=args.vcf
 VCF_GENE_SELECTED=VCF_IN.replace(".vcf", "_gene_selection.vcf")
 
-
-# REGIONS=regions_from_vcf(VCF_IN)
-KNOWN_GENES=create_gene_list("TCGA-PRAD", MIN_SUPPORT)
-# OVERLAP=overlap_ENSEMBLE(REGIONS)
-# vcf_annotate_pros_genes_overlap(VCF_IN, VCF_GENE_SELECTED, KNOWN_GENES, OVERLAP)
+REGIONS=regions_from_vcf(VCF_IN)
+KNOWN_GENES=create_TCGA_gene_list(CANCERTYPE, MIN_SUPPORT)
+OVERLAP=overlap_ENSEMBLE(REGIONS)
+vcf_annotate_pros_genes_overlap(VCF_IN, VCF_GENE_SELECTED, KNOWN_GENES, OVERLAP)
