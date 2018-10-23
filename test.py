@@ -3,11 +3,13 @@ import re
 import json
 import vcf as pyvcf
 
+x=["bla", "tru"]
+print (str(x))
 #print(float(int(7)/int(3)))
-CANCER_TYPE="TCGA-PRAD"
+CANCER_TYPE=["TCGA-OV", "TCGA-SARC"]
 
 # SERVER_CASES="https://api.gdc.cancer.gov/cases"
-SERVER_CASES="https://api.gdc.cancer.gov/analysis/mutated_cases_count_by_project"
+SERVER_CASES="https://api.gdc.cancer.gov/projects"
 SERVER_GENES="https://api.gdc.cancer.gov/analysis/top_mutated_genes_by_project"
 
 FIELDS_GENES = [
@@ -19,14 +21,13 @@ FIELDS_GENES = [
 FIELDS_GENES = ",".join(FIELDS_GENES)
 
 FIELDS_CASES = [
-    "key",
-    "case_with_ssm"
+    "project_id"
     ]
 
 FIELDS_CASES = ",".join(FIELDS_CASES)
 
 #FILTERS_CASES={"op":"AND","content":[{"op":"in","content":{"field":"cases.primary_site","value":["Prostate gland"]}}]}
-FILTERS_CASES={"op":"AND","content":[{"op":"in","content":{"field":"project.project_id","value":CANCER_TYPE}}]}
+FILTERS_CASES={"op":"in","content":{"field":"primary_site","value":"Prostate gland"}}
 FILTERS_GENES={"op":"AND","content":[{"op":"in","content":{"field":"case.project.project_id","value":[CANCER_TYPE]}}]}
 
 PARAMS_GENES = {
@@ -39,15 +40,17 @@ PARAMS_GENES = {
 PARAMS_CASES = {
     "filters": json.dumps(FILTERS_CASES),
     "format": "JSON",
-    "size": "0"
+    "size": "100"
     }
 
 request_cases=requests.get(SERVER_CASES, params=PARAMS_CASES)
 response_cases=request_cases.text
 response_cases=json.loads(response_cases)
-#print (response_cases)
-hits_cases=response_cases["aggregations"]["projects"]["buckets"]
-print (hits_cases[0]["case_summary"]["case_with_ssm"]["doc_count"])
+# print (response_cases)
+hits_cases=response_cases["data"]["hits"]
+print (hits_cases)
+for x in hits_cases:
+    print (x["project_id"])
 #print(hits_cases)
 #print (len(hits_cases))
 # CASE_NUMBER=int(hits_cases[0]['summary']['case_count'])
