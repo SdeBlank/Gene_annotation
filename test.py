@@ -12,7 +12,6 @@ SERVER_GENES="https://api.gdc.cancer.gov/analysis/top_mutated_genes_by_project"
 
 FIELDS_GENES = [
     "gene_id",
-    "_score",
     "symbol"
     ]
 
@@ -26,16 +25,17 @@ FIELDS_CASES = ",".join(FIELDS_CASES)
 
 #FILTERS_CASES={"op":"AND","content":[{"op":"in","content":{"field":"cases.primary_site","value":["Prostate gland"]}}]}
 # FILTERS_CASES={"op":"in","content":{"field":"primary_site","value":"Prostate gland"}}
-FILTERS_CASES={"op":"in","content":{"field":"project_id","value":["TCGA-OV","TCGA-PRAD"]}}
+FILTERS_CASES={"op":"in","content":{"field":"project_id","value":["TCGA-OV","TCGA-SARC"]}}
 FILTERS_GENES={"op":"AND","content":[
-                                {"op":"in","content":{"field":"case.project.project_id","value":["TCGA-PRAD", "FM-AD"]}},
-                                {"op":"in","content":{"field":"case.project.primary_site","value":["Prostate gland"]}}]}
+                                {"op":"in","content":{"field":"case.project.primary_site","value":["Prostate gland"]}}    #,
+                                #{"op":"in","content":{"field":"cases.project.project_id","value":["TCGA-OV", "TCGA-SARC"]}}
+                                ]}
 
 PARAMS_GENES = {
     "filters": json.dumps(FILTERS_GENES),
     "fields": FIELDS_GENES,
     "format": "JSON",
-    "size": "10"
+    "size": "10000"
     }
 
 PARAMS_CASES = {
@@ -62,16 +62,16 @@ response_genes=request_genes.text
 response_genes=json.loads(response_genes)
 print (response_genes)
 hits_genes=response_genes['data']["hits"]
-print (hits_genes)
+#print (hits_genes)
 
-# a=0
-# SIGNIFICANT_GENES=[]
-# for HIT in hits:
-#     print (HIT)
-#     if int(HIT["_score"])>=5:
-#         a+=1
-#         SIGNIFICANT_GENES.append(HIT)
-# print (a)
+a=0
+SIGNIFICANT_GENES=[]
+for HIT in hits_genes:
+    print (HIT)
+    if int(HIT["_score"])>=5:
+        a+=1
+        SIGNIFICANT_GENES.append(HIT)
+print (a)
 
 
 # VCF_IN="/home/cog/sdeblank/Documents/sharc/EMC026T.nanosv.SHARC.primers.vcf"
