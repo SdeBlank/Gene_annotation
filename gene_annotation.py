@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser()
 parser = argparse.ArgumentParser(description='Put here a description.')
 parser.add_argument('vcf', help='VCF file')
 parser.add_argument('-f', '--flank', default=200, type=int, help='Flank [default: 200]')
-parser.add_argument('-s', '--support', default=200, type=int, help='Minimal supporting cases a gene has been found in a cancer type [default: 5]')
+parser.add_argument('-s', '--support', default=0.01, type=float, help='Minimal percentage of cancer patients supporting the mutated gene [default: 0.01]')
 
 args = parser.parse_args()
 
@@ -203,45 +203,51 @@ def annotate_genes_vcf(INPUT_VCF, OUTPUT_VCF, ENSEMBLE_GENES):
 
 def create_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
-    SERVER="https://api.gdc.cancer.gov/analysis/top_mutated_genes_by_project"
+    SERVER_CASES="https://api.gdc.cancer.gov/projects"
+    SERVER_GENES="https://api.gdc.cancer.gov/analysis/top_mutated_genes_by_project"
 
-    FIELDS = [
+    FIELDS_GENES = [
         "gene_id",
         "symbol"
         ]
 
-    FIELDS = ",".join(FIELDS)
+    FIELDS_GENES = ",".join(FIELDS_GENES)
 
-    FILTERS={
-        "op":"AND",
-        "content":[
-            {
-                "op":"in",
-                "content":{
-                    "field":"case.project.project_id",
-                    "value":[
-                        CANCER_TYPE
-                    ]
-                }
-            }
-        ]
-    }
+    FILTERS_CASES={"op":"AND","content":[{"op":"in","content":{"field":"project_id","value":[CANCER_TYPE]}}]}
+    FILTERS_GENES={"op":"AND","content":[{"op":"in","content":{"field":"case.project.project_id","value":[CANCER_TYPE]}}]}
 
-    PARAMS = {
-        "filters": json.dumps(FILTERS),
-        "fields": FIELDS,
+    PARAMS_GENES = {
+        "filters": json.dumps(FILTERS_GENES),
+        "fields": FIELDS_GENES,
         "format": "JSON",
-        "size": "10000"
+        "size": "1000"
         }
 
-    request=requests.get(SERVER, params=PARAMS)
-    response=request.text
-    response=json.loads(response)
-    hits=response['data']["hits"]
+    PARAMS_CASES = {
+        "filters": json.dumps(FILTERS_CASES),
+        "expand" : "summary",
+        "format": "JSON",
+        "size": "5"
+        }
+
+    request_cases=requests.get(SERVER_CASES, params=PARAMS_CASES)
+    response_cases=request_cases.text
+    response_cases=json.loads(response_cases)
+    hits_cases=response_cases['data']["hits"]
+    CASE_NUMBER=int(hits_cases[0]['summary']['case_count'])
+
+    request_genes=requests.get(SERVER_GENES, params=PARAMS_GENES)
+    response_genes=request_genes.text
+    response_genes=json.loads(response_genes)
+    hits_genes=response_genes['data']["hits"]
+    print (CASE_NUMBER)
 
     SIGNIFICANT_GENES=[]
-    for HIT in hits:
-        if int(HIT["_score"])>=MIN_SUPPORT:
+    for HIT in hits_genes:
+        print (float(HIT["_score"])/float(CASE_NUMBER))
+        print (MIN_SUPPORT)
+        if float(HIT["_score"])/float(CASE_NUMBER)>=MIN_SUPPORT:
+            print ("JA")
             SIGNIFICANT_GENES.append(HIT["gene_id"])
     return SIGNIFICANT_GENES
 
@@ -281,7 +287,7 @@ def vcf_annotate_pros_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
         print ("Geen gen: ", count_no_gene)
 
 FLANK=args.flank
-MIN_SUPPORT=int(args.support)
+MIN_SUPPORT=args.support
 
 #KNOWN_GENES="/home/cog/sdeblank/Documents/sharc/pros_genes_min5.json"
 VCF_IN=args.vcf

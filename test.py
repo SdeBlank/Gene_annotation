@@ -3,42 +3,45 @@ import re
 import json
 import vcf as pyvcf
 
-SERVER="https://api.gdc.cancer.gov/projects"
+print(float(int(7)/int(3)))
 
-FIELDS = [
-    "gene_id",
-    "symbol"
-    ]
-
-FIELDS = ",".join(FIELDS)
-
-FILTERS={
-    "op":"AND",
-    "content":[
-        {
-            "op":"in",
-            "content":{
-                "field":"project_id",
-                "value":[
-                    "TCGA-PRAD"
-                ]
-            }
-        }
-    ]
-}
-
-PARAMS = {
-    "filters": json.dumps(FILTERS),
-#    "fields": FIELDS,
-    "format": "JSON",
-    "size": "5"
-    }
-
-request=requests.get(SERVER, params=PARAMS)
-response=request.text
-response=json.loads(response)
-hits=response['data']["hits"]
-print (response)
+# SERVER="https://api.gdc.cancer.gov/projects"
+#
+# FIELDS = [
+#     "gene_id",
+#     "symbol"
+#     ]
+#
+# FIELDS = ",".join(FIELDS)
+#
+# FILTERS={
+#     "op":"AND",
+#     "content":[
+#         {
+#             "op":"=",
+#             "content":{
+#                 "field":"project_id",
+#                 "value":[
+#                     "TCGA-PRAD"
+#                 ]
+#             }
+#         }
+#     ]
+# }
+#
+# PARAMS = {
+#     "filters": json.dumps(FILTERS),
+#     #"fields": "summary",
+#     "expand" : "summary",
+#     "format": "JSON",
+#     "size": "5"
+#     }
+#
+# request=requests.get(SERVER, params=PARAMS)
+# response=request.text
+# response=json.loads(response)
+# hits=response['data']["hits"]
+# print (hits[0]['summary']['case_count'])
 #hits=json['data']["hits"]
 
 # a=0
