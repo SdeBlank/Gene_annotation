@@ -326,9 +326,6 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
                     print (str(record.ID) + "\t LENGTH=" + str(record.INFO["SVLEN"][0]) + "\t" + str(record.ALT[0]) + "\t" + "TCGAGENES=" + str(len(OVERLAP)) + "\t" + "SCORE=" + str(score))
                 else:
                     print (str(record.ID) + "\t" + "TRANS/INS" + "\t" + "TCGAGENES=" + str(len(OVERLAP)) + "\t" + "SCORE=" + str(score))
-
-
-
                 count_pros_overlap+=1
             elif len(REGIONS[record.ID]["GENES"])>0:
                 count_gene_no_overlap+=1
