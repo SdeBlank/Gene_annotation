@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description='Put here a description.')
 parser.add_argument('vcf', help='VCF file')
 parser.add_argument('-f', '--flank', default=200, type=int, help='Flank [default: 200]')
 parser.add_argument('-s', '--support', default=0.01, type=float, help='Minimal percentage of cancer patients supporting the mutated gene [default: 0.01]')
-parser.add_argument('-c', '--cancertype', default="Prostate gland", type=str, help='Primary site of cancer [default=Prostate gland]')
+parser.add_argument('-c', '--cancertype', type=str, help='Primary site of cancer', required=True)
 
 args = parser.parse_args()
 
@@ -316,7 +316,7 @@ def vcf_annotate_pros_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
         count_no_gene=0
         x=0
         VCF_READER=pyvcf.Reader(INPUT)
-        VCF_READER.infos['PROSGENE']=pyvcf.parser._Info('PROSGENE', 1, "Integer", "Number of prostate cancer genes overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
+        VCF_READER.infos['TCGAGENES']=pyvcf.parser._Info('TCGAGENES', 1, "Integer", "Number of prostate cancer genes overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
         VCF_WRITER=pyvcf.Writer(OUTPUT, VCF_READER, lineterminator='\n')
         GO={}
         for record in VCF_READER:
@@ -325,13 +325,13 @@ def vcf_annotate_pros_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
 
             ENSEMBLE_OVERLAP=REGIONS[record.ID]["GENES"]
             OVERLAP=set(ENSEMBLE_OVERLAP).intersection(PROS_GENES)
-            record.INFO["PROSGENE"]=len(OVERLAP)
+            record.INFO["TCGAGENES"]=len(OVERLAP)
             VCF_WRITER.write_record(record)
             if len(OVERLAP)>0:
                 if "SVLEN" in record.INFO:
-                    print (str(record.ID) + "\t LENGTH=" + str(record.INFO["SVLEN"][0]) + "\t" + str(record.ALT[0]) + "\t" + "PROSGENES=" + str(len(OVERLAP)))
+                    print (str(record.ID) + "\t LENGTH=" + str(record.INFO["SVLEN"][0]) + "\t" + str(record.ALT[0]) + "\t" + "TCGAGENES=" + str(len(OVERLAP)))
                 else:
-                    print (str(record.ID) + "\t" + "TRANS/INS" + "\t" + "PROSGENES=" + str(len(OVERLAP)))
+                    print (str(record.ID) + "\t" + "TRANS/INS" + "\t" + "TCGAGENES=" + str(len(OVERLAP)))
                 count_pros_overlap+=1
             elif len(REGIONS[record.ID]["GENES"])>0:
                 count_gene_no_overlap+=1
