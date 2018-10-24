@@ -254,7 +254,7 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
     print ("Number of cases used in analysis", CASE_NUMBER)
 
-############################ FILTER OUT ALL TCGA GENES THAT HAVE A GIVEN OCCURENCE PERCENTAGE
+############################ FILTER OUT ALL TCGA GENES THAT HAVE A GIVEN OCCURRENCE PERCENTAGE
 
     SERVER_GENES="https://api.gdc.cancer.gov/analysis/top_mutated_genes_by_project"
     FILTERS_GENES={"op":"AND","content":[
@@ -279,13 +279,23 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
     response_genes=request_genes.text
     response_genes=json.loads(response_genes)
     hits_genes=response_genes['data']["hits"]
-    SIGNIFICANT_GENES=[]
-    for HIT in hits_genes:
-        if float(HIT["_score"])/float(CASE_NUMBER)>=float(MIN_SUPPORT):
-            SIGNIFICANT_GENES.append(HIT["gene_id"])
 
-    print ("Selecting genes with a minimal occurence of "+str(MIN_SUPPORT)+"/"+str(CASE_NUMBER)+"="+str(float(MIN_SUPPORT)*CASE_NUMBER))
+    SIGNIFICANT_GENES={}
+    for HIT in hits_genes:
+        OCCURRENCE=float(float(HIT["_score"])/float(CASE_NUMBER))
+        if OCCURRENCE>=float(MIN_SUPPORT):
+            SIGNIFICANT_GENES[HIT["gene_id"]]=OCCURRENCE
+
+    print ("Selecting genes with a minimal occurrence of "+str(MIN_SUPPORT)+"/"+str(CASE_NUMBER)+"="+str(float(MIN_SUPPORT)*CASE_NUMBER))
     return SIGNIFICANT_GENES
+
+    # SIGNIFICANT_GENES=[]
+    # for HIT in hits_genes:
+    #     if float(HIT["_score"])/float(CASE_NUMBER)>=float(MIN_SUPPORT):
+    #         SIGNIFICANT_GENES.append(HIT["gene_id"])
+    #
+    # print ("Selecting genes with a minimal occurence of "+str(MIN_SUPPORT)+"/"+str(CASE_NUMBER)+"="+str(float(MIN_SUPPORT)*CASE_NUMBER))
+    # return SIGNIFICANT_GENES
 
 #############################################   OVERLAP GENES THAT OVERLAP WITH GIVEN SV VCF AND TCGA CANCER GENES   #############################################
 def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
@@ -307,10 +317,18 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
             record.INFO["TCGAGENES"]=len(OVERLAP)
             VCF_WRITER.write_record(record)
             if len(OVERLAP)>0:
+                score=0
+                for i in OVERLAP:
+                    #print (round(KNOWN_GENES[i], 3))
+                    score+=(KNOWN_GENES[i] ** 2)                    !!!! FIGURE OUT SCORE !!!!
+                score=int(round(score*100000, 0))
                 if "SVLEN" in record.INFO:
-                    print (str(record.ID) + "\t LENGTH=" + str(record.INFO["SVLEN"][0]) + "\t" + str(record.ALT[0]) + "\t" + "TCGAGENES=" + str(len(OVERLAP)))
+                    print (str(record.ID) + "\t LENGTH=" + str(record.INFO["SVLEN"][0]) + "\t" + str(record.ALT[0]) + "\t" + "TCGAGENES=" + str(len(OVERLAP)) + "\t" + "SCORE=" + str(score))
                 else:
-                    print (str(record.ID) + "\t" + "TRANS/INS" + "\t" + "TCGAGENES=" + str(len(OVERLAP)))
+                    print (str(record.ID) + "\t" + "TRANS/INS" + "\t" + "TCGAGENES=" + str(len(OVERLAP)) + "\t" + "SCORE=" + str(score))
+
+
+
                 count_pros_overlap+=1
             elif len(REGIONS[record.ID]["GENES"])>0:
                 count_gene_no_overlap+=1
