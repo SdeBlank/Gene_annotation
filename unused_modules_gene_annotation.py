@@ -21,6 +21,23 @@ def annotate_genes_vcf(INPUT_VCF, OUTPUT_VCF, ENSEMBLE_GENES):
                 record.add_info("GENES", ",".join(ENSEMBLE_GENES[record.ID]["GENES"]))
             VCF_WRITER.write_record(record)
 
+def gene_ontology(ENSEMBLE_ID):
+    SERVER="https://GRCh37.rest.ensembl.org/xrefs/id/"
+    HEADERS={"Content-Type" : "application/json"}
+
+    request = requests.get(SERVER+ENSEMBLE_ID+"?external_db=GO;all_levels=1", headers=HEADERS)
+    response = request.text
+    data=json.loads(response)
+
+    GO={}
+    if isinstance(data, list):
+        GO[ENSEMBLE_ID]=list(set([GO["description"] for GO in data]))
+    else:
+        print ("Error:", data["error"])
+        GO[ENSEMBLE_ID]=[]
+
+    return GO
+
 #def ENSEMBLE_gene():
 #stable_id="ENSG00000141510"
 #request=requests.get('http://rest.ensembl.org/overlap/id/'+ stable_id +'?feature=transcript;content-type=application/json')

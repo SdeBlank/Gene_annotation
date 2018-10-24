@@ -20,65 +20,7 @@ parser.add_argument('-c', '--cancertype', type=str, help='Primary site of cancer
 
 args = parser.parse_args()
 
-
-def overlap_ENSEMBLE(REGIONS):
-    SERVER="https://GRCh37.rest.ensembl.org/overlap/region/"
-    SPECIES="human"
-    HEADERS={"Content-Type" : "application/json"}
-
-    for ID in REGIONS:
-        REGIONS[ID]["GENES"]=[]
-
-        for region in REGIONS[ID]["REGION"]:
-            CHROM=region["Chrom"]
-            SV_START=int(region["Start"])
-            SV_END=int(region["End"])
-
-            if SV_END-SV_START <= 5000000:
-                request = requests.get(SERVER+SPECIES+"/"+CHROM+":"+str(SV_START)+"-"+str(SV_END)+"?feature=gene", headers=HEADERS)
-                response = request.text
-                data=json.loads(response)
-                if isinstance(data, list):
-                    REGIONS[ID]["GENES"]=REGIONS[ID]["GENES"]+[gene["id"] for gene in data]
-                else:
-                    print ("Error:", data["error"])
-                    REGIONS[ID]["GENES"]=[]
-            else:
-                TEMP_SV_START=SV_START
-                TEMP_SV_END=TEMP_SV_START
-                while TEMP_SV_END < SV_END:
-                    TEMP_SV_END+=4999999
-                    if TEMP_SV_END > SV_END:
-                        TEMP_SV_END=SV_END
-                    request = requests.get(SERVER+SPECIES+"/"+CHROM+":"+str(TEMP_SV_START)+"-"+str(TEMP_SV_END)+"?feature=gene", headers=HEADERS)
-                    response = request.text
-                    data=json.loads(response)
-                    if isinstance(data, list):
-                        REGIONS[ID]["GENES"]=REGIONS[ID]["GENES"]+[gene["id"] for gene in data]
-                    else:
-                        print ("Error:", data["error"])
-                        REGIONS[ID]["GENES"]=[]
-                        break
-                    TEMP_SV_START=TEMP_SV_END
-    return REGIONS
-
-def gene_ontology(ENSEMBLE_ID):
-    SERVER="https://GRCh37.rest.ensembl.org/xrefs/id/"
-    HEADERS={"Content-Type" : "application/json"}
-
-    request = requests.get(SERVER+ENSEMBLE_ID+"?external_db=GO;all_levels=1", headers=HEADERS)
-    response = request.text
-    data=json.loads(response)
-
-    GO={}
-    if isinstance(data, list):
-        GO[ENSEMBLE_ID]=list(set([GO["description"] for GO in data]))
-    else:
-        print ("Error:", data["error"])
-        GO[ENSEMBLE_ID]=[]
-
-    return GO
-
+#############################################   CONVERT DIFFERENT VCF SV NOTATIONS TO bracket notations N[Chr:pos[   #############################################
 def alt_convert( record ):
     orientation = None
     remoteOrientation = None
@@ -128,6 +70,7 @@ def alt_convert( record ):
     return( record )
 
 
+#############################################   FILTER OUT REGIONS AROUND BREAKPOINTS FROM A VCF FILE   #############################################
 def regions_from_vcf(INPUT_VCF):
     with open(INPUT_VCF, "r") as vcf:
         VCF_READER=pyvcf.Reader(vcf)
@@ -191,19 +134,53 @@ def regions_from_vcf(INPUT_VCF):
                     SV_DATA[ID]["REGION"].append({"Chrom":BEGIN_CHROM, "Start":REGION_START, "End":REGION_END})
         return (SV_DATA)
 
-def annotate_genes_vcf(INPUT_VCF, OUTPUT_VCF, ENSEMBLE_GENES):
-    with open(INPUT_VCF, "r") as vcf, open(OUTPUT_VCF, "w") as OUTPUT_VCF:
-        vcf.seek(0)
-        VCF_READER=pyvcf.Reader(vcf)
-        VCF_READER.infos['GENES']=pyvcf.parser._Info('GENES', ".", "String", "Genes overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
-        VCF_WRITER=pyvcf.Writer(OUTPUT_VCF, VCF_READER, lineterminator='\n')
-        for record in VCF_READER:
-            if len(ENSEMBLE_GENES[record.ID]["GENES"])>0:
-                record.add_info("GENES", ",".join(ENSEMBLE_GENES[record.ID]["GENES"]))
-            VCF_WRITER.write_record(record)
+#############################################   OVERLAP SV WITH KNOWN ENSEMBLE GENES   #############################################
+def overlap_ENSEMBLE(REGIONS):
+    SERVER="https://GRCh37.rest.ensembl.org/overlap/region/"
+    SPECIES="human"
+    HEADERS={"Content-Type" : "application/json"}
+
+    for ID in REGIONS:
+        REGIONS[ID]["GENES"]=[]
+
+        for region in REGIONS[ID]["REGION"]:
+            CHROM=region["Chrom"]
+            SV_START=int(region["Start"])
+            SV_END=int(region["End"])
+
+            if SV_END-SV_START <= 5000000:
+                request = requests.get(SERVER+SPECIES+"/"+CHROM+":"+str(SV_START)+"-"+str(SV_END)+"?feature=gene", headers=HEADERS)
+                response = request.text
+                data=json.loads(response)
+                if isinstance(data, list):
+                    REGIONS[ID]["GENES"]=REGIONS[ID]["GENES"]+[gene["id"] for gene in data]
+                else:
+                    print ("Error:", data["error"])
+                    REGIONS[ID]["GENES"]=[]
+            else:
+                TEMP_SV_START=SV_START
+                TEMP_SV_END=TEMP_SV_START
+                while TEMP_SV_END < SV_END:
+                    TEMP_SV_END+=4999999
+                    if TEMP_SV_END > SV_END:
+                        TEMP_SV_END=SV_END
+                    request = requests.get(SERVER+SPECIES+"/"+CHROM+":"+str(TEMP_SV_START)+"-"+str(TEMP_SV_END)+"?feature=gene", headers=HEADERS)
+                    response = request.text
+                    data=json.loads(response)
+                    if isinstance(data, list):
+                        REGIONS[ID]["GENES"]=REGIONS[ID]["GENES"]+[gene["id"] for gene in data]
+                    else:
+                        print ("Error:", data["error"])
+                        REGIONS[ID]["GENES"]=[]
+                        break
+                    TEMP_SV_START=TEMP_SV_END
+    return REGIONS
+
+#############################################   CREATE A LIST OF CANCER GENES FROM THE TCGA DATABASE   #############################################
 
 def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
+############################ FILTER OUT ALL TCGA PROJECTS THAT WERE USED IN ANALYSING THE PRIMARY SITE CANCER (THUS FILTERING OUT PROJECTS LIKE FM-AD)
     SERVER_PROJECTS="https://api.gdc.cancer.gov/projects"
     FILTERS_PROJECTS={"op":"in","content":{"field":"primary_site","value":CANCER_TYPE}}
     PARAMS_PROJECTS = {
@@ -222,7 +199,8 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
             PROJECTS.append(project["project_id"])
     print ("TCGA projects associated with "+CANCER_TYPE+": "+ ", ".join(PROJECTS))
 
-###################################################################################
+############################# FILTER OUT ALL CASES THAT WERE USED IN THESE PROJECTS
+
     SERVER_CASES="https://api.gdc.cancer.gov/cases"
     FILTERS_CASES={"op":"AND","content":[
                             {"op":"in","content":{"field":"primary_site","value":CANCER_TYPE}},
@@ -243,7 +221,7 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
         CASES.append(hit["submitter_id"])
     print ("Total number of cases", len(CASES))
 
-###################################################################################
+############################ FILTER OUT ALL CASES THAT WERE USED IN MUTATION ANALYSIS
     SERVER_CASETYPE="https://api.gdc.cancer.gov/cases"
 
     CASE_NUMBER=0
@@ -276,7 +254,8 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
     print ("Number of cases used in analysis", CASE_NUMBER)
 
-###################################################################################
+############################ FILTER OUT ALL TCGA GENES THAT HAVE A GIVEN OCCURENCE PERCENTAGE
+
     SERVER_GENES="https://api.gdc.cancer.gov/analysis/top_mutated_genes_by_project"
     FILTERS_GENES={"op":"AND","content":[
                                 {"op":"in","content":{"field":"case.primary_site","value":CANCER_TYPE}}    ,
@@ -307,9 +286,9 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
     print ("Selecting genes with a minimal occurence of "+str(MIN_SUPPORT)+"/"+str(CASE_NUMBER)+"="+str(float(MIN_SUPPORT)*CASE_NUMBER))
     return SIGNIFICANT_GENES
-####################################################################################
 
-def vcf_annotate_pros_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
+#############################################   OVERLAP GENES THAT OVERLAP WITH GIVEN SV VCF AND TCGA CANCER GENES   #############################################
+def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
     with open(INPUT_VCF, "r") as INPUT, open (OUTPUT_VCF, "w") as OUTPUT:
         count_pros_overlap=0
         count_gene_no_overlap=0
@@ -343,6 +322,8 @@ def vcf_annotate_pros_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
         print ("Wel gen, geen overlap: ",count_gene_no_overlap)
         print ("Geen gen: ", count_no_gene)
 
+
+#############################################   RUNNING CODE   #############################################
 FLANK=args.flank
 MIN_SUPPORT=args.support
 CANCERTYPE=args.cancertype
@@ -351,6 +332,6 @@ VCF_IN=args.vcf
 VCF_GENE_SELECTED=VCF_IN.replace(".vcf", "_gene_selection.vcf")
 
 REGIONS=regions_from_vcf(VCF_IN)
-KNOWN_GENES=create_TCGA_gene_list(CANCERTYPE, MIN_SUPPORT)
 OVERLAP=overlap_ENSEMBLE(REGIONS)
-vcf_annotate_pros_genes_overlap(VCF_IN, VCF_GENE_SELECTED, KNOWN_GENES, OVERLAP)
+KNOWN_GENES=create_TCGA_gene_list(CANCERTYPE, MIN_SUPPORT)
+vcf_annotate_tcga_genes_overlap(VCF_IN, VCF_GENE_SELECTED, KNOWN_GENES, OVERLAP)
