@@ -220,7 +220,7 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
     for project in hits_projects:
         if "TCGA" in project['project_id']:
             PROJECTS.append(project["project_id"])
-    print (PROJECTS)
+    print ("TCGA projects associated with "+CANCER_TYPE+": "+ ", ".join(PROJECTS))
 
 ###################################################################################
     SERVER_CASES="https://api.gdc.cancer.gov/cases"
@@ -247,25 +247,34 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
     SERVER_CASETYPE="https://api.gdc.cancer.gov/cases"
 
     CASE_NUMBER=0
-    for count, case in enumerate(CASES):            !!!!!!!!! CALL CASES IN LIST <-- QUERY TOO LONG!!!!!!!!!!!!
-        print (count+1)
-        FILTERS_CASETYPE={"op":"in","content":{"field":"submitter_id","value":case}}
+    slice_start=0
+    slice_end=0
+
+    while slice_end < len(CASES):
+        slice_end+=300
+        if slice_end > len(CASES):
+            slice_end=len(CASES)
+        FILTERS_CASETYPE={"op":"in","content":{"field":"submitter_id","value":CASES[slice_start:slice_end]}}
         PARAMS_CASETYPE = {
             "filters": json.dumps(FILTERS_CASETYPE),
             "format": "JSON",
             "expand": "files",
-            "size": "100"
+            "size": "300"
             }
         request_casetype=requests.get(SERVER_CASETYPE, params=PARAMS_CASETYPE)
         response_casetype=request_casetype.text
         response_casetype=json.loads(response_casetype)
-        hits_casetype=response_casetype["data"]["hits"][0]["files"]
-        for files in hits_casetype:
-            file_type=files['data_category']
-            if file_type == "Simple Nucleotide Variation":
-                CASE_NUMBER+=1
-                break
-    print ("Number of cases with SNVs", CASE_NUMBER)
+        hits_casetype=response_casetype["data"]["hits"]
+        for hit in hits_casetype:
+            for files in hit["files"]:
+                file_type=files['data_category']
+                if file_type == "Simple Nucleotide Variation":
+                    CASE_NUMBER+=1
+                    break
+
+        slice_start+=300
+
+    print ("Number of cases used in analysis", CASE_NUMBER)
 
 ###################################################################################
     SERVER_GENES="https://api.gdc.cancer.gov/analysis/top_mutated_genes_by_project"
@@ -291,11 +300,12 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
     response_genes=request_genes.text
     response_genes=json.loads(response_genes)
     hits_genes=response_genes['data']["hits"]
-    print (hits_genes[0:10])
     SIGNIFICANT_GENES=[]
     for HIT in hits_genes:
         if float(HIT["_score"])/float(CASE_NUMBER)>=float(MIN_SUPPORT):
             SIGNIFICANT_GENES.append(HIT["gene_id"])
+
+    print ("Selecting genes with a minimal occurence of "+str(MIN_SUPPORT)+"/"+str(CASE_NUMBER)+"="+str(float(MIN_SUPPORT)*CASE_NUMBER))
     return SIGNIFICANT_GENES
 ####################################################################################
 

@@ -6,8 +6,8 @@ import vcf as pyvcf
 
 SERVER_CASES="https://api.gdc.cancer.gov/cases"
 FILTERS_CASES={"op":"AND","content":[
-                        {"op":"in","content":{"field":"primary_site","value":"Prostate gland"}},
-                        {"op":"in","content":{"field":"project.project_id","value":["TCGA-PRAD"]}}
+                        {"op":"in","content":{"field":"primary_site","value":"Ovary"}},
+                        {"op":"in","content":{"field":"project.project_id","value":["TCGA-OV", "TCGA-SARC"]}}
                         ]}
 PARAMS_CASES = {
     "filters": json.dumps(FILTERS_CASES),
@@ -26,19 +26,38 @@ print ("Total number of cases", len(CASES))
 
 ###################################################################################
 SERVER_CASETYPE="https://api.gdc.cancer.gov/cases"
-FILTERS_CASETYPE={"op":"in","content":{"field":"submitter_id","value":CASES}}
-PARAMS_CASETYPE = {
-    "filters": json.dumps(FILTERS_CASETYPE),
-    "format": "JSON",
-    "expand": "files",
-    "size": "100"
-    }
-request_casetype=requests.get(SERVER_CASETYPE, params=PARAMS_CASETYPE)
-response_casetype=request_casetype.text
-print(response_casetype)
-response_casetype=json.loads(response_casetype)
 
-hits_casetype=response_casetype["data"]["hits"][0]["files"]
+CASE_NUMBER=0
+
+slice_start=0
+slice_end=0
+while slice_end < len(CASES):
+    slice_end+=300
+    if slice_end > len(CASES):
+        slice_end=len(CASES)
+    FILTERS_CASETYPE={"op":"in","content":{"field":"submitter_id","value":CASES[slice_start:slice_end]}}
+    PARAMS_CASETYPE = {
+        "filters": json.dumps(FILTERS_CASETYPE),
+        "format": "JSON",
+        "expand": "files",
+        "size": "300"
+        }
+    request_casetype=requests.get(SERVER_CASETYPE, params=PARAMS_CASETYPE)
+    response_casetype=request_casetype.text
+    response_casetype=json.loads(response_casetype)
+    hits_casetype=response_casetype["data"]["hits"]
+    for hit in hits_casetype:
+        for files in hit["files"]:
+            file_type=files['data_category']
+            print (file_type)
+            if file_type == "Simple Nucleotide Variation":
+                CASE_NUMBER+=1
+                break
+
+    slice_start+=300
+    print (slice_end)
+
+print ("Number of cases with SNVs", CASE_NUMBER)
 # CASE_NUMBER=0
 # for count, case in enumerate(CASES):             ####################################   #REMOVE COUNT!!!
 #     print (count+1)
