@@ -182,6 +182,7 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
 
     SIGNIFICANT_GENES={}
+    GENE_NAMES={}
 
     SERVER_GENES="https://dcc.icgc.org/api/v1/genes"
     FILTERS_GENES={
@@ -215,6 +216,7 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
             OCCURRENCE=float(float(HIT["affectedDonorCountFiltered"])/float(CASE_NUMBER))
             if OCCURRENCE>=float(MIN_SUPPORT):
                 SIGNIFICANT_GENES[HIT["id"]]=1
+                GENE_NAMES[HIT["id"]]=HIT["symbol"]
         SLICE+=100
 
     SERVER_GENES="https://dcc.icgc.org/api/v1/genes"
@@ -318,7 +320,7 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
     print (len(SIGNIFICANT_GENES))
     print ("Selecting genes with a minimal occurrence of "+str(MIN_SUPPORT)+"/"+str(CASE_NUMBER)+"="+str(float(MIN_SUPPORT)*CASE_NUMBER))
-    return SIGNIFICANT_GENES
+    return SIGNIFICANT_GENES, GENE_NAMES
 
 
 #############################################   OVERLAP GENES THAT OVERLAP WITH GIVEN SV VCF AND TCGA CANCER GENES   #############################################
@@ -331,6 +333,7 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
         x=0
         VCF_READER=pyvcf.Reader(INPUT)
         VCF_READER.infos['ICGC_SCORE']=pyvcf.parser._Info('ICGC_SCORE', 1, "Integer", "Score of ICGC cancer genes overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
+        VCF_READER.infos['ICGC_OVERLAP']=pyvcf.parser._Info('ICGC_SCORE', ".", "String", "ICGC cancer gene overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
         # 0 = No overlap
         # 1 = Overlap ----> occurrene > given occurrence
         # 2 = Overlap ----> occurrene > given occurrence + impact==HIGH
@@ -351,7 +354,9 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
             for gene in OVERLAP:
                 if PROS_GENES[gene]>SCORE:
                     SCORE=PROS_GENES[gene]
+                    GENE=GENE_NAMES[gene]           !!!!!!!FIX!!!!!!!
             record.INFO["ICGC_SCORE"]=SCORE
+            record.INFO["ICGC_OVERLAP"]=GENE
             VCF_WRITER.write_record(record)
             if len(OVERLAP)>0:
                 if "SVLEN" in record.INFO:
@@ -380,5 +385,5 @@ VCF_GENE_SELECTED=VCF_IN.replace(".vcf", "_gene_selection.vcf")
 
 REGIONS=regions_from_vcf(VCF_IN)
 OVERLAP=overlap_ENSEMBLE(REGIONS)
-KNOWN_GENES=create_TCGA_gene_list(CANCERTYPE, MIN_SUPPORT)
+KNOWN_GENES, GENE_NAMES=create_TCGA_gene_list(CANCERTYPE, MIN_SUPPORT)
 vcf_annotate_tcga_genes_overlap(VCF_IN, VCF_GENE_SELECTED, KNOWN_GENES, OVERLAP)
