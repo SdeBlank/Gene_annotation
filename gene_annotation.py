@@ -182,7 +182,10 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
 ############################ FILTER OUT ALL TCGA PROJECTS THAT WERE USED IN ANALYSING THE PRIMARY SITE CANCER (THUS FILTERING OUT PROJECTS LIKE FM-AD)
     SERVER_PROJECTS="https://api.gdc.cancer.gov/projects"
-    FILTERS_PROJECTS={"op":"in","content":{"field":"primary_site","value":CANCER_TYPE}}
+    FILTERS_PROJECTS={"op":"AND","content":[
+                                {"op":"in","content":{"field":"projects.primary_site","value":CANCER_TYPE}},
+                                {"op":"in","content":{"field":"projects.program.name","value":"TCGA"}}
+                                ]}
     PARAMS_PROJECTS = {
         "filters": json.dumps(FILTERS_PROJECTS),
         "format": "JSON",
@@ -195,16 +198,16 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
     hits_projects=response_projects["data"]["hits"]
     PROJECTS=[]
     for project in hits_projects:
-        if "TCGA" in project['project_id']:
-            PROJECTS.append(project["project_id"])
+        PROJECTS.append(project["project_id"])
     print ("TCGA projects associated with "+CANCER_TYPE+": "+ ", ".join(PROJECTS))
 
 ############################# FILTER OUT ALL CASES THAT WERE USED IN THESE PROJECTS
 
     SERVER_CASES="https://api.gdc.cancer.gov/cases"
     FILTERS_CASES={"op":"AND","content":[
-                            {"op":"in","content":{"field":"primary_site","value":CANCER_TYPE}},
-                            {"op":"in","content":{"field":"project.project_id","value":PROJECTS}}
+                            {"op":"in","content":{"field":"cases.primary_site","value":CANCER_TYPE}},
+                            {"op":"in","content":{"field":"genes.is_cancer_gene_census","value":"true"}},
+                            {"op":"in","content":{"field":"cases.project.project_id","value":PROJECTS}}
                             ]}
     PARAMS_CASES = {
         "filters": json.dumps(FILTERS_CASES),
@@ -259,7 +262,8 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
     SERVER_GENES="https://api.gdc.cancer.gov/analysis/top_mutated_genes_by_project"
     FILTERS_GENES={"op":"AND","content":[
                                 {"op":"in","content":{"field":"case.primary_site","value":CANCER_TYPE}}    ,
-                                {"op":"in","content":{"field":"cases.project.project_id","value":PROJECTS}}
+                                {"op":"in","content":{"field":"cases.project.project_id","value":PROJECTS}},
+                                {"op":"in","content":{"field":"genes.is_cancer_gene_census","value":"true"}}
                                 ]}
     FIELDS_GENES = [
         "gene_id",
@@ -285,7 +289,7 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
         OCCURRENCE=float(float(HIT["_score"])/float(CASE_NUMBER))
         if OCCURRENCE>=float(MIN_SUPPORT):
             SIGNIFICANT_GENES[HIT["gene_id"]]=OCCURRENCE
-
+    print (len(SIGNIFICANT_GENES))
     print ("Selecting genes with a minimal occurrence of "+str(MIN_SUPPORT)+"/"+str(CASE_NUMBER)+"="+str(float(MIN_SUPPORT)*CASE_NUMBER))
     return SIGNIFICANT_GENES
 
@@ -320,7 +324,7 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
                 score=0
                 for i in OVERLAP:
                     #print (round(KNOWN_GENES[i], 3))
-                    score+=(KNOWN_GENES[i] ** 2)                    !!!! FIGURE OUT SCORE !!!!
+                    score+=(KNOWN_GENES[i] ** 2)
                 score=int(round(score*100000, 0))
                 if "SVLEN" in record.INFO:
                     print (str(record.ID) + "\t LENGTH=" + str(record.INFO["SVLEN"][0]) + "\t" + str(record.ALT[0]) + "\t" + "TCGAGENES=" + str(len(OVERLAP)) + "\t" + "SCORE=" + str(score))
@@ -346,7 +350,7 @@ CANCERTYPE=args.cancertype
 VCF_IN=args.vcf
 VCF_GENE_SELECTED=VCF_IN.replace(".vcf", "_gene_selection.vcf")
 
-REGIONS=regions_from_vcf(VCF_IN)
-OVERLAP=overlap_ENSEMBLE(REGIONS)
+#REGIONS=regions_from_vcf(VCF_IN)
+#OVERLAP=overlap_ENSEMBLE(REGIONS)
 KNOWN_GENES=create_TCGA_gene_list(CANCERTYPE, MIN_SUPPORT)
-vcf_annotate_tcga_genes_overlap(VCF_IN, VCF_GENE_SELECTED, KNOWN_GENES, OVERLAP)
+#vcf_annotate_tcga_genes_overlap(VCF_IN, VCF_GENE_SELECTED, KNOWN_GENES, OVERLAP)
