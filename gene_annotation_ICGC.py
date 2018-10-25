@@ -182,7 +182,11 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
 ############################ FILTER OUT ALL CASES THAT WERE USED IN MUTATION ANALYSIS
     SERVER_CASETYPE="https://dcc.icgc.org/api/v1/donors/count"
-    FILTERS_CASETYPE={"donor":{"primarySite":{"is":[CANCER_TYPE]}},"gene":{"curatedSetId":{"is":["GS1"]}}}
+    FILTERS_CASETYPE={
+                        "donor":{"primarySite":{"is":[CANCER_TYPE]}}
+                    ,"gene":{"curatedSetId":{"is":["GS1"]}}
+                    #,"mutation":{"functionalImpact":{"is":["High"]}}
+                    }
     PARAMS_CASETYPE = {
         "filters": json.dumps(FILTERS_CASETYPE),
         "format": "JSON",
@@ -194,15 +198,20 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
     print ("Number of cases used in analysis", CASE_NUMBER)
 
-############################ FILTER OUT ALL TCGA GENES THAT HAVE A GIVEN OCCURRENCE PERCENTAGE
+############################ FILTER OUT ALL ICGC GENES WITH A HIGH IMPACT
 
     SIGNIFICANT_GENES={}
 
     SERVER_GENES="https://dcc.icgc.org/api/v1/genes"
-    FILTERS_GENES={"donor":{"primarySite":{"is":[CANCER_TYPE]}},"gene":{"curatedSetId":{"is":["GS1"]}}}
+    FILTERS_GENES={
+                    "donor":{"primarySite":{"is":[CANCER_TYPE]}}
+                    ,"gene":{"curatedSetId":{"is":["GS1"]}}
+                    #,"mutation":{"functionalImpact":{"is":["High"]}}
+                    }
     FILTERS_GENES=json.dumps(FILTERS_GENES)
 
     MAX_GENES=int(requests.get("https://dcc.icgc.org/api/v1/genes/count?filters="+FILTERS_GENES).text)
+    print (MAX_GENES)
     SLICE=0
     while SLICE < MAX_GENES:
         PARAMS_GENES = {
@@ -222,7 +231,7 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
             if OCCURRENCE>=float(MIN_SUPPORT):
                 SIGNIFICANT_GENES[HIT["id"]]=OCCURRENCE
         SLICE+=100
-
+    print (len(SIGNIFICANT_GENES))
     print ("Selecting genes with a minimal occurrence of "+str(MIN_SUPPORT)+"/"+str(CASE_NUMBER)+"="+str(float(MIN_SUPPORT)*CASE_NUMBER))
     return SIGNIFICANT_GENES
 
@@ -230,12 +239,15 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 #############################################   OVERLAP GENES THAT OVERLAP WITH GIVEN SV VCF AND TCGA CANCER GENES   #############################################
 def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
     with open(INPUT_VCF, "r") as INPUT, open (OUTPUT_VCF, "w") as OUTPUT:
+        CANCER_CONS="0"
+        HIGH_IMPACT="0"
+        OCCUR="0"
         count_pros_overlap=0
         count_gene_no_overlap=0
         count_no_gene=0
         x=0
         VCF_READER=pyvcf.Reader(INPUT)
-        VCF_READER.infos['TCGAGENES']=pyvcf.parser._Info('TCGAGENES', 1, "Integer", "Number of prostate cancer genes overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
+        VCF_READER.infos['ICGCGENES']=pyvcf.parser._Info('ICGCGENES', 1, "Integer", "Number of prostate cancer genes overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
         VCF_WRITER=pyvcf.Writer(OUTPUT, VCF_READER, lineterminator='\n')
         GO={}
         for record in VCF_READER:
@@ -244,7 +256,7 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
 
             ENSEMBLE_OVERLAP=REGIONS[record.ID]["GENES"]
             OVERLAP=set(ENSEMBLE_OVERLAP).intersection(PROS_GENES)
-            record.INFO["TCGAGENES"]=len(OVERLAP)
+            record.INFO["ICGCGENES"]=len(OVERLAP)
             VCF_WRITER.write_record(record)
             if len(OVERLAP)>0:
                 score=0
@@ -253,9 +265,9 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
                     score+=(KNOWN_GENES[i] ** 2)
                 score=int(round(score*100000, 0))
                 if "SVLEN" in record.INFO:
-                    print (str(record.ID) + "\t LENGTH=" + str(record.INFO["SVLEN"][0]) + "\t" + str(record.ALT[0]) + "\t" + "TCGAGENES=" + str(len(OVERLAP)) + "\t" + "SCORE=" + str(score))
+                    print (str(record.ID) + "\t LENGTH=" + str(record.INFO["SVLEN"][0]) + "\t" + str(record.ALT[0]) + "\t" + "ICGCGENES=" + str(len(OVERLAP)) + "\t" + "SCORE=" + str(score))
                 else:
-                    print (str(record.ID) + "\t" + "TRANS/INS" + "\t" + "TCGAGENES=" + str(len(OVERLAP)) + "\t" + "SCORE=" + str(score))
+                    print (str(record.ID) + "\t" + "TRANS/INS" + "\t" + "ICGCGENES=" + str(len(OVERLAP)) + "\t" + "SCORE=" + str(score))
                 count_pros_overlap+=1
             elif len(REGIONS[record.ID]["GENES"])>0:
                 count_gene_no_overlap+=1
