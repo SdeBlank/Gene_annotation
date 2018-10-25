@@ -180,126 +180,52 @@ def overlap_ENSEMBLE(REGIONS):
 
 def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
-############################ FILTER OUT ALL TCGA PROJECTS THAT WERE USED IN ANALYSING THE PRIMARY SITE CANCER (THUS FILTERING OUT PROJECTS LIKE FM-AD)
-    SERVER_PROJECTS="https://api.gdc.cancer.gov/projects"
-    FILTERS_PROJECTS={"op":"AND","content":[
-                                {"op":"in","content":{"field":"projects.primary_site","value":CANCER_TYPE}},
-                                {"op":"in","content":{"field":"projects.program.name","value":"TCGA"}}
-                                ]}
-    PARAMS_PROJECTS = {
-        "filters": json.dumps(FILTERS_PROJECTS),
-        "format": "JSON",
-        "size": "1000"
-        }
-
-    request_projects=requests.get(SERVER_PROJECTS, params=PARAMS_PROJECTS)
-    response_projects=request_projects.text
-    response_projects=json.loads(response_projects)
-    hits_projects=response_projects["data"]["hits"]
-    PROJECTS=[]
-    for project in hits_projects:
-        PROJECTS.append(project["project_id"])
-    print ("TCGA projects associated with "+CANCER_TYPE+": "+ ", ".join(PROJECTS))
-
-############################# FILTER OUT ALL CASES THAT WERE USED IN THESE PROJECTS
-
-    SERVER_CASES="https://api.gdc.cancer.gov/cases"
-    FILTERS_CASES={"op":"AND","content":[
-                            {"op":"in","content":{"field":"cases.primary_site","value":CANCER_TYPE}},
-                            #{"op":"in","content":{"field":"genes.is_cancer_gene_census","value":"true"}},
-                            {"op":"in","content":{"field":"cases.project.project_id","value":PROJECTS}}
-                            ]}
-    PARAMS_CASES = {
-        "filters": json.dumps(FILTERS_CASES),
-        "format": "JSON",
-        "size": "25000"
-        }
-
-    request_cases=requests.get(SERVER_CASES, params=PARAMS_CASES)
-    response_cases=request_cases.text
-    response_cases=json.loads(response_cases)
-    hits_cases=response_cases["data"]["hits"]
-    CASES=[]
-    for hit in hits_cases:
-        CASES.append(hit["submitter_id"])
-    print ("Total number of cases", len(CASES))
-
 ############################ FILTER OUT ALL CASES THAT WERE USED IN MUTATION ANALYSIS
-    SERVER_CASETYPE="https://api.gdc.cancer.gov/cases"
-
-    CASE_NUMBER=0
-    slice_start=0
-    slice_end=0
-
-    while slice_end < len(CASES):
-        slice_end+=300
-        if slice_end > len(CASES):
-            slice_end=len(CASES)
-        FILTERS_CASETYPE={"op":"in","content":{"field":"submitter_id","value":CASES[slice_start:slice_end]}}
-        PARAMS_CASETYPE = {
-            "filters": json.dumps(FILTERS_CASETYPE),
-            "format": "JSON",
-            "expand": "files",
-            "size": "300"
-            }
-        request_casetype=requests.get(SERVER_CASETYPE, params=PARAMS_CASETYPE)
-        response_casetype=request_casetype.text
-        response_casetype=json.loads(response_casetype)
-        hits_casetype=response_casetype["data"]["hits"]
-        for hit in hits_casetype:
-            for files in hit["files"]:
-                file_type=files['data_category']
-                if file_type == "Simple Nucleotide Variation":
-                    CASE_NUMBER+=1
-                    break
-
-        slice_start+=300
+    SERVER_CASETYPE="https://dcc.icgc.org/api/v1/donors/count"
+    FILTERS_CASETYPE={"donor":{"primarySite":{"is":[CANCER_TYPE]}},"gene":{"curatedSetId":{"is":["GS1"]}}}
+    PARAMS_CASETYPE = {
+        "filters": json.dumps(FILTERS_CASETYPE),
+        "format": "JSON",
+        "size": "1"
+        }
+    request_casetype=requests.get(SERVER_CASETYPE, params=PARAMS_CASETYPE)
+    response_casetype=request_casetype.text
+    CASE_NUMBER=int(response_casetype)
 
     print ("Number of cases used in analysis", CASE_NUMBER)
 
 ############################ FILTER OUT ALL TCGA GENES THAT HAVE A GIVEN OCCURRENCE PERCENTAGE
 
-    SERVER_GENES="https://api.gdc.cancer.gov/analysis/top_mutated_genes_by_project"
-    FILTERS_GENES={"op":"AND","content":[
-                                {"op":"in","content":{"field":"case.primary_site","value":CANCER_TYPE}}    ,
-                                {"op":"in","content":{"field":"cases.project.project_id","value":PROJECTS}}
-                                #{"op":"in","content":{"field":"genes.is_cancer_gene_census","value":"true"}}
-                                ]}
-    FIELDS_GENES = [
-        "gene_id",
-        "symbol"
-        ]
-
-    FIELDS_GENES = ",".join(FIELDS_GENES)
-
-    PARAMS_GENES = {
-        "filters": json.dumps(FILTERS_GENES),
-        "fields": FIELDS_GENES,
-        "format": "JSON",
-        "size": "100000"
-        }
-
-    request_genes=requests.get(SERVER_GENES, params=PARAMS_GENES)
-    response_genes=request_genes.text
-    response_genes=json.loads(response_genes)
-    hits_genes=response_genes['data']["hits"]
-
     SIGNIFICANT_GENES={}
-    for HIT in hits_genes:
-        OCCURRENCE=float(float(HIT["_score"])/float(CASE_NUMBER))
-        if OCCURRENCE>=float(MIN_SUPPORT):
-            SIGNIFICANT_GENES[HIT["gene_id"]]=OCCURRENCE
-    print (len(SIGNIFICANT_GENES))
+
+    SERVER_GENES="https://dcc.icgc.org/api/v1/genes"
+    FILTERS_GENES={"donor":{"primarySite":{"is":[CANCER_TYPE]}},"gene":{"curatedSetId":{"is":["GS1"]}}}
+    FILTERS_GENES=json.dumps(FILTERS_GENES)
+
+    MAX_GENES=int(requests.get("https://dcc.icgc.org/api/v1/genes/count?filters="+FILTERS_GENES).text)
+    SLICE=0
+    while SLICE < MAX_GENES:
+        PARAMS_GENES = {
+            "filters": FILTERS_GENES,
+            "format": "JSON",
+            "size": "100",
+            "from": str(SLICE)
+            }
+
+        request_genes=requests.get(SERVER_GENES, params=PARAMS_GENES)
+        response_genes=request_genes.text
+        response_genes=json.loads(response_genes)
+        hits_genes=response_genes["hits"]
+
+        for HIT in hits_genes:
+            OCCURRENCE=float(float(HIT["affectedDonorCountFiltered"])/float(CASE_NUMBER))
+            if OCCURRENCE>=float(MIN_SUPPORT):
+                SIGNIFICANT_GENES[HIT["id"]]=OCCURRENCE
+        SLICE+=100
+
     print ("Selecting genes with a minimal occurrence of "+str(MIN_SUPPORT)+"/"+str(CASE_NUMBER)+"="+str(float(MIN_SUPPORT)*CASE_NUMBER))
     return SIGNIFICANT_GENES
 
-    # SIGNIFICANT_GENES=[]
-    # for HIT in hits_genes:
-    #     if float(HIT["_score"])/float(CASE_NUMBER)>=float(MIN_SUPPORT):
-    #         SIGNIFICANT_GENES.append(HIT["gene_id"])
-    #
-    # print ("Selecting genes with a minimal occurence of "+str(MIN_SUPPORT)+"/"+str(CASE_NUMBER)+"="+str(float(MIN_SUPPORT)*CASE_NUMBER))
-    # return SIGNIFICANT_GENES
 
 #############################################   OVERLAP GENES THAT OVERLAP WITH GIVEN SV VCF AND TCGA CANCER GENES   #############################################
 def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
