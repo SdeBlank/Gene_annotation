@@ -180,7 +180,7 @@ def overlap_ENSEMBLE(REGIONS):
 
 def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
-
+##################################### Top 1500 genes with occurence > given occurence
     SIGNIFICANT_GENES={}
     GENE_NAMES={}
 
@@ -198,15 +198,16 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
     CASE_NUMBER=int(requests.get("https://dcc.icgc.org/api/v1/donors/count?filters="+FILTERS_GENES).text)
 
     SLICE=0
+    STOP=False
     print ("All",MAX_GENES, CASE_NUMBER)
-    while SLICE < MAX_GENES and not SLICE > 1500:
+    while SLICE < MAX_GENES and STOP==False :
+        print(SLICE)
         PARAMS_GENES = {
             "filters": FILTERS_GENES,
             "format": "JSON",
             "size": "100",
             "from": str(SLICE)
             }
-
         request_genes=requests.get(SERVER_GENES, params=PARAMS_GENES)
         response_genes=request_genes.text
         response_genes=json.loads(response_genes)
@@ -215,10 +216,16 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
         for HIT in hits_genes:
             OCCURRENCE=float(float(HIT["affectedDonorCountFiltered"])/float(CASE_NUMBER))
             if OCCURRENCE>=float(MIN_SUPPORT):
-                SIGNIFICANT_GENES[HIT["id"]]=1
-                GENE_NAMES[HIT["id"]]=HIT["symbol"]
+                SIGNIFICANT_GENES[HIT["id"]]={}
+                SIGNIFICANT_GENES[HIT["id"]]["score"]=1
+                SIGNIFICANT_GENES[HIT["id"]]["symbol"]=HIT["symbol"]
+            else:
+                STOP=True
+                break
+
         SLICE+=100
 
+##################################### Genes with occurence > given occurence and cancer_census is true
     SERVER_GENES="https://dcc.icgc.org/api/v1/genes"
     FILTERS_GENES={
                     "donor":{"primarySite":{"is":[CANCER_TYPE]}
@@ -233,7 +240,9 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
     print ("Cancer_census",MAX_GENES, CASE_NUMBER)
     SLICE=0
-    while SLICE < MAX_GENES and not SLICE > 1500:
+    STOP=False
+    while SLICE < MAX_GENES and STOP==False:
+        print(SLICE)
         PARAMS_GENES = {
             "filters": FILTERS_GENES,
             "format": "JSON",
@@ -249,14 +258,18 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
         for HIT in hits_genes:
             OCCURRENCE=float(float(HIT["affectedDonorCountFiltered"])/float(CASE_NUMBER))
             if OCCURRENCE>=float(MIN_SUPPORT):
-                SIGNIFICANT_GENES[HIT["id"]]=3
+                SIGNIFICANT_GENES[HIT["id"]]["score"]=3
+            else:
+                STOP=True
+                break
         SLICE+=100
 
+##################################### Genes with occurence > 0.1 and cancer_census is true
     SERVER_GENES="https://dcc.icgc.org/api/v1/genes"
     FILTERS_GENES={
                     "donor":{"primarySite":{"is":[CANCER_TYPE]}
                     ,"availableDataTypes":{"is":["ssm"]}}
-                    ,"mutation":{"functionalImpact":{"is":["High"]}}
+                    #,"mutation":{"functionalImpact":{"is":["High"]}}
                     ,"gene":{"curatedSetId":{"is":["GS1"]}}
                     }
     FILTERS_GENES=json.dumps(FILTERS_GENES)
@@ -266,7 +279,9 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
     print ("Cancer_census + 0.1 occurrence",MAX_GENES, CASE_NUMBER)
     SLICE=0
-    while SLICE < MAX_GENES and not SLICE > 1500:
+    STOP=False
+    while SLICE < MAX_GENES and STOP==False:
+        print(SLICE)
         PARAMS_GENES = {
             "filters": FILTERS_GENES,
             "format": "JSON",
@@ -282,9 +297,13 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
         for HIT in hits_genes:
             OCCURRENCE=float(float(HIT["affectedDonorCountFiltered"])/float(CASE_NUMBER))
             if OCCURRENCE>=0.1:
-                SIGNIFICANT_GENES[HIT["id"]]=4
+                SIGNIFICANT_GENES[HIT["id"]]["score"]=4
+            else:
+                STOP=True
+                break
         SLICE+=100
 
+##################################### Genes that have known high impact mutations
     SERVER_GENES="https://dcc.icgc.org/api/v1/genes"
     FILTERS_GENES={
                     "donor":{"primarySite":{"is":[CANCER_TYPE]}
@@ -299,7 +318,7 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
     print ("Impact",MAX_GENES, CASE_NUMBER)
     SLICE=0
-    while SLICE < MAX_GENES and not SLICE > 1500:
+    while SLICE < MAX_GENES:
         PARAMS_GENES = {
             "filters": FILTERS_GENES,
             "format": "JSON",
@@ -315,16 +334,17 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
         for HIT in hits_genes:
             #OCCURRENCE=float(float(HIT["affectedDonorCountFiltered"])/float(CASE_NUMBER))
             if HIT["id"] in SIGNIFICANT_GENES:
-                SIGNIFICANT_GENES[HIT["id"]]+=1
+                SIGNIFICANT_GENES[HIT["id"]]["score"]+=1
         SLICE+=100
 
+##################################### Return
     print (len(SIGNIFICANT_GENES))
     print ("Selecting genes with a minimal occurrence of "+str(MIN_SUPPORT)+"/"+str(CASE_NUMBER)+"="+str(float(MIN_SUPPORT)*CASE_NUMBER))
-    return SIGNIFICANT_GENES, GENE_NAMES
+    return SIGNIFICANT_GENES
 
 
 #############################################   OVERLAP GENES THAT OVERLAP WITH GIVEN SV VCF AND TCGA CANCER GENES   #############################################
-def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
+def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, ICGC_GENES, REGIONS):
     with open(INPUT_VCF, "r") as INPUT, open (OUTPUT_VCF, "w") as OUTPUT:
 
         count_pros_overlap=0
@@ -333,7 +353,7 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
         x=0
         VCF_READER=pyvcf.Reader(INPUT)
         VCF_READER.infos['ICGC_SCORE']=pyvcf.parser._Info('ICGC_SCORE', 1, "Integer", "Score of ICGC cancer genes overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
-        VCF_READER.infos['ICGC_OVERLAP']=pyvcf.parser._Info('ICGC_SCORE', ".", "String", "ICGC cancer gene overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
+        VCF_READER.infos['ICGC_OVERLAP']=pyvcf.parser._Info('ICGC_SCORE', ".", "String", "ICGC cancer gene ordered from high ICGC_SCORE to low ICGC_SCORE overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
         # 0 = No overlap
         # 1 = Overlap ----> occurrene > given occurrence
         # 2 = Overlap ----> occurrene > given occurrence + impact==HIGH
@@ -348,15 +368,19 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, PROS_GENES, REGIONS):
             overlap=0
 
             ENSEMBLE_OVERLAP=REGIONS[record.ID]["GENES"]
-            OVERLAP=set(ENSEMBLE_OVERLAP).intersection(PROS_GENES)
+            OVERLAP=set(ENSEMBLE_OVERLAP).intersection(ICGC_GENES)
 
             SCORE=0
+            GENE=[]
             for gene in OVERLAP:
-                if PROS_GENES[gene]>SCORE:
-                    SCORE=PROS_GENES[gene]
-                    GENE=GENE_NAMES[gene]           !!!!!!!FIX!!!!!!!
+                gene_score=ICGC_GENES[gene]["score"]
+                if gene_score>SCORE:
+                    SCORE=gene_score
+                    GENE.insert(0, ICGC_GENES[gene]["symbol"])
+                elif gene_score>=3:
+                    GENE.append(ICGC_GENES[gene]["symbol"])
             record.INFO["ICGC_SCORE"]=SCORE
-            record.INFO["ICGC_OVERLAP"]=GENE
+            record.INFO["ICGC_OVERLAP"]=",".join(GENE)
             VCF_WRITER.write_record(record)
             if len(OVERLAP)>0:
                 if "SVLEN" in record.INFO:
@@ -385,5 +409,5 @@ VCF_GENE_SELECTED=VCF_IN.replace(".vcf", "_gene_selection.vcf")
 
 REGIONS=regions_from_vcf(VCF_IN)
 OVERLAP=overlap_ENSEMBLE(REGIONS)
-KNOWN_GENES, GENE_NAMES=create_TCGA_gene_list(CANCERTYPE, MIN_SUPPORT)
+KNOWN_GENES=create_TCGA_gene_list(CANCERTYPE, MIN_SUPPORT)
 vcf_annotate_tcga_genes_overlap(VCF_IN, VCF_GENE_SELECTED, KNOWN_GENES, OVERLAP)

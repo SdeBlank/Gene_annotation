@@ -3,50 +3,62 @@ import re
 import json
 import vcf as pyvcf
 
-SERVER_CASES="https://api.gdc.cancer.gov/cases"
-FILTERS_CASES={"op":"AND","content":[
-                        {"op":"in","content":{"field":"primary_site","value":"Ovary"}},
-                        {"op":"in","content":{"field":"project.project_id","value":["TCGA-OV", "TCGA-SARC"]}}
-                        ]}
-PARAMS_CASES = {
-    "filters": json.dumps(FILTERS_CASES),
-    "format": "JSON",
-    "size": "25000"
-    }
+a = []
+li=[4, 3, 3, 3, 5]
 
-request_cases=requests.get(SERVER_CASES, params=PARAMS_CASES)
-response_cases=request_cases.text
-response_cases=json.loads(response_cases)
-hits_cases=response_cases["data"]["hits"]
-CASES=[]
-for hit in hits_cases:
-    CASES.append(hit["submitter_id"])
-print ("Total number of cases", len(CASES))
+x=0
+for n in li:
+    if n>x:
+        x=n
+        a.insert(0, n)
+    elif n>=3:
+        a.append(n)
+print (a)
 
-SERVER_CASES="https://api.gdc.cancer.gov/ssm_occurrences"
-
-CASE_NUMBER=0
-for case in CASES:
-    FILTERS_CASES={"op":"AND","content":[
-                                    {"op":"in","content":{"field":"case.submitter_id","value":case}}    #,
-                                    #{"op":"in","content":{"field":"cases.project.project_id","value":["TCGA-OV", "TCGA-SARC"]}}
-                                    ]}
-
-    PARAMS_CASES = {
-        "filters": json.dumps(FILTERS_CASES),
-        "format": "JSON",
-        "size": "1"
-        }
-
-    request_cases=requests.get(SERVER_CASES, params=PARAMS_CASES)
-    response_cases=request_cases.text
-    response_cases=json.loads(response_cases)
-    hits_cases=response_cases["data"]["hits"]
-    print (hits_cases)
-    if len(hits_cases)>0:
-        CASE_NUMBER+=1
-
-print (CASE_NUMBER)
+# SERVER_CASES="https://api.gdc.cancer.gov/cases"
+# FILTERS_CASES={"op":"AND","content":[
+#                         {"op":"in","content":{"field":"primary_site","value":"Ovary"}},
+#                         {"op":"in","content":{"field":"project.project_id","value":["TCGA-OV", "TCGA-SARC"]}}
+#                         ]}
+# PARAMS_CASES = {
+#     "filters": json.dumps(FILTERS_CASES),
+#     "format": "JSON",
+#     "size": "25000"
+#     }
+#
+# request_cases=requests.get(SERVER_CASES, params=PARAMS_CASES)
+# response_cases=request_cases.text
+# response_cases=json.loads(response_cases)
+# hits_cases=response_cases["data"]["hits"]
+# CASES=[]
+# for hit in hits_cases:
+#     CASES.append(hit["submitter_id"])
+# print ("Total number of cases", len(CASES))
+#
+# SERVER_CASES="https://api.gdc.cancer.gov/ssm_occurrences"
+#
+# CASE_NUMBER=0
+# for case in CASES:
+#     FILTERS_CASES={"op":"AND","content":[
+#                                     {"op":"in","content":{"field":"case.submitter_id","value":case}}    #,
+#                                     #{"op":"in","content":{"field":"cases.project.project_id","value":["TCGA-OV", "TCGA-SARC"]}}
+#                                     ]}
+#
+#     PARAMS_CASES = {
+#         "filters": json.dumps(FILTERS_CASES),
+#         "format": "JSON",
+#         "size": "1"
+#         }
+#
+#     request_cases=requests.get(SERVER_CASES, params=PARAMS_CASES)
+#     response_cases=request_cases.text
+#     response_cases=json.loads(response_cases)
+#     hits_cases=response_cases["data"]["hits"]
+#     print (hits_cases)
+#     if len(hits_cases)>0:
+#         CASE_NUMBER+=1
+#
+# print (CASE_NUMBER)
 
 
 
