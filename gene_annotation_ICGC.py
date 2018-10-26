@@ -195,9 +195,8 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
     SLICE=0
     STOP=False
-    print ("All",MAX_GENES, CASE_NUMBER)
+
     while SLICE < MAX_GENES and STOP==False :
-        print(SLICE)
         PARAMS_GENES = {
             "filters": FILTERS_GENES,
             "format": "JSON",
@@ -233,11 +232,9 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
     MAX_GENES=int(requests.get("https://dcc.icgc.org/api/v1/genes/count?filters="+FILTERS_GENES).text)
     CASE_NUMBER=int(requests.get("https://dcc.icgc.org/api/v1/donors/count?filters="+FILTERS_GENES).text)
 
-    print ("Cancer_census",MAX_GENES, CASE_NUMBER)
     SLICE=0
     STOP=False
     while SLICE < MAX_GENES and STOP==False:
-        print(SLICE)
         PARAMS_GENES = {
             "filters": FILTERS_GENES,
             "format": "JSON",
@@ -271,11 +268,9 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
     MAX_GENES=int(requests.get("https://dcc.icgc.org/api/v1/genes/count?filters="+FILTERS_GENES).text)
     CASE_NUMBER=int(requests.get("https://dcc.icgc.org/api/v1/donors/count?filters="+FILTERS_GENES).text)
 
-    print ("Cancer_census + 0.1 occurrence",MAX_GENES, CASE_NUMBER)
     SLICE=0
     STOP=False
     while SLICE < MAX_GENES and STOP==False:
-        print(SLICE)
         PARAMS_GENES = {
             "filters": FILTERS_GENES,
             "format": "JSON",
@@ -309,7 +304,6 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
     MAX_GENES=int(requests.get("https://dcc.icgc.org/api/v1/genes/count?filters="+FILTERS_GENES).text)
     CASE_NUMBER=int(requests.get("https://dcc.icgc.org/api/v1/donors/count?filters="+FILTERS_GENES).text)
 
-    print ("Impact",MAX_GENES, CASE_NUMBER)
     SLICE=0
     while SLICE < MAX_GENES:
         PARAMS_GENES = {
@@ -398,7 +392,7 @@ MIN_SUPPORT=args.support
 CANCERTYPE=args.cancertype
 
 VCF_IN=args.vcf
-VCF_GENE_SELECTED=VCF_IN.replace(".vcf", "_gene_selection.vcf")
+VCF_GENE_SELECTED=VCF_IN.replace(".vcf", "_ICGC_annotation.vcf")
 
 REGIONS=regions_from_vcf(VCF_IN)
 OVERLAP=overlap_ENSEMBLE(REGIONS)
