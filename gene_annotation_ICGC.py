@@ -181,7 +181,6 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
 ##################################### Top 1500 genes with occurence > given occurence
     SIGNIFICANT_GENES={}
-    GENE_NAMES={}
 
     SERVER_GENES="https://dcc.icgc.org/api/v1/genes"
     FILTERS_GENES={
@@ -285,8 +284,8 @@ def create_TCGA_gene_list(CANCER_TYPE, MIN_SUPPORT):
 
         for HIT in hits_genes:
             OCCURRENCE=float(float(HIT["affectedDonorCountFiltered"])/float(CASE_NUMBER))
-            if OCCURRENCE>=0.1:
-                SIGNIFICANT_GENES[HIT["id"]]["score"]=4
+            if OCCURRENCE>=0.2:
+                SIGNIFICANT_GENES[HIT["id"]]["score"]=5
             else:
                 STOP=True
                 break
@@ -340,13 +339,14 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, ICGC_GENES, REGIONS):
         x=0
         VCF_READER=pyvcf.Reader(INPUT)
         VCF_READER.infos['ICGC_SCORE']=pyvcf.parser._Info('ICGC_SCORE', 1, "Integer", "Score of ICGC cancer genes overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
-        VCF_READER.infos['ICGC_OVERLAP']=pyvcf.parser._Info('ICGC_SCORE', ".", "String", "ICGC cancer gene ordered from high ICGC_SCORE to low ICGC_SCORE overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
+        VCF_READER.infos['ICGC_OVERLAP']=pyvcf.parser._Info('ICGC_SCORE', ".", "String", "ICGC cancer gene (icgc_score>3) ordered from high ICGC_SCORE to low ICGC_SCORE overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
         # 0 = No overlap
         # 1 = Overlap ----> occurrene > given occurrence
         # 2 = Overlap ----> occurrene > given occurrence + impact==HIGH
         # 3 = Overlap ----> occurrene > given occurrence + cancer gene
         # 4 = Overlap ----> occurrene > given occurrence + impact==HIGH + cancer gene
-        # 5 = Overlap ----> occurrene > 10% + impact==HIGH + cancer gene
+        # 5 = Overlap ----> occurrene > 10% + cancer gene
+        # 5 = Overlap ----> occurrene > 10% + cancer gene + impact==HIGH
 
         VCF_WRITER=pyvcf.Writer(OUTPUT, VCF_READER, lineterminator='\n')
         GO={}
@@ -361,19 +361,23 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, ICGC_GENES, REGIONS):
             GENE=[]
             for gene in OVERLAP:
                 gene_score=ICGC_GENES[gene]["score"]
-                if gene_score>SCORE:
+
+                if gene_score > SCORE:
                     SCORE=gene_score
-                    GENE.insert(0, ICGC_GENES[gene]["symbol"])
-                elif gene_score>=3:
+                    if gene_score >= 3:
+                        GENE.insert(0, ICGC_GENES[gene]["symbol"])
+                elif gene_score >= 3:
                     GENE.append(ICGC_GENES[gene]["symbol"])
             record.INFO["ICGC_SCORE"]=SCORE
-            record.INFO["ICGC_OVERLAP"]=",".join(GENE)
+
+            if len(GENE) > 0:
+                record.INFO["ICGC_OVERLAP"]=",".join(GENE)
             VCF_WRITER.write_record(record)
             if len(OVERLAP)>0:
                 if "SVLEN" in record.INFO:
-                    print (str(record.ID) + "\t LENGTH=" + str(record.INFO["SVLEN"][0]) + "\t" + str(record.ALT[0]) + "\t" + "ICGC_OVERLAP=" + str(len(OVERLAP)) + "\t" + "SCORE=" + str(SCORE))
+                    print (str(record.ID) + "\t LENGTH=" + str(record.INFO["SVLEN"][0]) + "\t" + str(record.ALT[0]) + "\t" + "ICGC_OVERLAP=" + str(len(GENE)) + "\t" + "SCORE=" + str(SCORE))
                 else:
-                    print (str(record.ID) + "\t" + "TRANS/INS" + "\t" + "ICGC_OVERLAP=" + str(len(OVERLAP)) + "\t" + "SCORE=" + str(SCORE))
+                    print (str(record.ID) + "\t" + "TRANS/INS" + "\t" + "ICGC_OVERLAP=" + str(len(GENE)) + "\t" + "SCORE=" + str(SCORE))
                 count_pros_overlap+=1
             elif len(REGIONS[record.ID]["GENES"])>0:
                 count_gene_no_overlap+=1
