@@ -17,7 +17,7 @@ parser.add_argument('vcf', help='VCF file')
 parser.add_argument('-c', '--cancertype', type=str, help='Primary site of cancer', required=True)
 parser.add_argument('-o', '--output', type=str, help='VCF output file', required=True)
 parser.add_argument('-f', '--flank', default=200, type=int, help='Flank [default: 200]')
-parser.add_argument('-s', '--support', default=0.01, type=float, help='Minimal percentage of cancer patients supporting the mutated gene [default: 0.01]')
+parser.add_argument('-s', '--support', default=0.05, type=float, help='Minimal percentage of cancer patients supporting the mutated gene [default: 0.05]')
 args = parser.parse_args()
 
 #############################################   CONVERT DIFFERENT VCF SV NOTATIONS TO bracket notations N[Chr:pos[   #############################################
@@ -340,7 +340,7 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, ICGC_GENES, REGIONS):
         x=0
         VCF_READER=pyvcf.Reader(INPUT)
         VCF_READER.infos['ICGC_SCORE']=pyvcf.parser._Info('ICGC_SCORE', 1, "Integer", "Score of ICGC cancer genes (occurrence>"+str(MIN_SUPPORT)+") overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
-        VCF_READER.infos['ICGC_OVERLAP']=pyvcf.parser._Info('ICGC_SCORE', ".", "String", "ICGC cancer gene (icgc_score>3) ordered from high ICGC_SCORE to low ICGC_SCORE overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
+        VCF_READER.infos['ICGC_OVERLAP']=pyvcf.parser._Info('ICGC_OVERLAP', ".", "String", "ICGC cancer gene (icgc_score>3) ordered from high ICGC_SCORE to low ICGC_SCORE overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
         # 0 = No overlap
         # 1 = Overlap ----> occurrene > MIN_SUPPORT
         # 2 = Overlap ----> occurrene > MIN_SUPPORT + impact==HIGH
