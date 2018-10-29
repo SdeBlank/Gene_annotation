@@ -346,7 +346,7 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, ICGC_GENES, REGIONS):
         # 3 = Overlap ----> occurrene > MIN_SUPPORT + cancer gene
         # 4 = Overlap ----> occurrene > MIN_SUPPORT + impact==HIGH + cancer gene
         # 5 = Overlap ----> occurrene > 20% + cancer gene
-        # 5 = Overlap ----> occurrene > 20% + cancer gene + impact==HIGH
+        # 6 = Overlap ----> occurrene > 20% + cancer gene + impact==HIGH
 
         VCF_WRITER=pyvcf.Writer(OUTPUT, VCF_READER, lineterminator='\n')
         GO={}
