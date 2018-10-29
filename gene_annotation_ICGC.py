@@ -350,6 +350,8 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, ICGC_GENES, REGIONS):
 
         VCF_WRITER=pyvcf.Writer(OUTPUT, VCF_READER, lineterminator='\n')
         GO={}
+
+        print ("ID" + "\t" + "TYPE" + "\t" + "LENGTH" + "\t" + "ICGC_OVERLAP_COUNT" + "\t" + "ICGC_SCORE" + "\t" + "ICGC_OVERLAP")
         for record in VCF_READER:
             x+=1
             overlap=0
@@ -373,21 +375,23 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, ICGC_GENES, REGIONS):
             if len(GENE) > 0:
                 record.INFO["ICGC_OVERLAP"]=",".join(GENE)
             VCF_WRITER.write_record(record)
+
+
             if len(OVERLAP)>0:
                 if "SVLEN" in record.INFO:
-                    print (str(record.ID) + "\t LENGTH=" + str(record.INFO["SVLEN"][0]) + "\t" + str(record.ALT[0]) + "\t" + "ICGC_OVERLAP=" + str(len(GENE)) + "\t" + "SCORE=" + str(SCORE))
+                    print (str(record.ID) + "\t" + str(record.ALT[0]) + "\t" + str(record.INFO["SVLEN"][0]) + "\t" + str(len(OVERLAP)) + "\t" + str(SCORE) + "\t" + str(",".join(GENE)))
                 else:
-                    print (str(record.ID) + "\t" + "TRANS/INS" + "\t" + "ICGC_OVERLAP=" + str(len(GENE)) + "\t" + "SCORE=" + str(SCORE))
+                    print (str(record.ID) + "\t" + "TRANS/INV" + "\t" + "NA" + "\t" + str(len(OVERLAP)) + "\t" + str(SCORE) + "\t" + str(",".join(GENE)))
                 count_pros_overlap+=1
             elif len(REGIONS[record.ID]["GENES"])>0:
                 count_gene_no_overlap+=1
             elif len(REGIONS[record.ID]["GENES"])==0:
                 count_no_gene +=1
 
-        print ("\n" +"Totaal: "+ str(x))
-        print ("Gene overlap: ",count_pros_overlap)
-        print ("Wel gen, geen overlap: ",count_gene_no_overlap)
-        print ("Geen gen: ", count_no_gene)
+        print ("\n" +"Total nr of genes: "+ str(x))
+        print ("ICGC overlap: ",count_pros_overlap)
+        print ("Gene overlap but none are in ICGC database: ",count_gene_no_overlap)
+        print ("No gene overlap: ", count_no_gene)
 
 
 #############################################   RUNNING CODE   #############################################
