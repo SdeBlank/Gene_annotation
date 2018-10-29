@@ -338,15 +338,15 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, ICGC_GENES, REGIONS):
         count_no_gene=0
         x=0
         VCF_READER=pyvcf.Reader(INPUT)
-        VCF_READER.infos['ICGC_SCORE']=pyvcf.parser._Info('ICGC_SCORE', 1, "Integer", "Score of ICGC cancer genes overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
+        VCF_READER.infos['ICGC_SCORE']=pyvcf.parser._Info('ICGC_SCORE', 1, "Integer", "Score of ICGC cancer genes (occurrence>"+str(MIN_SUPPORT)+") overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
         VCF_READER.infos['ICGC_OVERLAP']=pyvcf.parser._Info('ICGC_SCORE', ".", "String", "ICGC cancer gene (icgc_score>3) ordered from high ICGC_SCORE to low ICGC_SCORE overlapping with the SV region (+"+str(FLANK)+"bp flanking region)", "NanoSV", "X")
         # 0 = No overlap
-        # 1 = Overlap ----> occurrene > given occurrence
-        # 2 = Overlap ----> occurrene > given occurrence + impact==HIGH
-        # 3 = Overlap ----> occurrene > given occurrence + cancer gene
-        # 4 = Overlap ----> occurrene > given occurrence + impact==HIGH + cancer gene
-        # 5 = Overlap ----> occurrene > 10% + cancer gene
-        # 5 = Overlap ----> occurrene > 10% + cancer gene + impact==HIGH
+        # 1 = Overlap ----> occurrene > MIN_SUPPORT
+        # 2 = Overlap ----> occurrene > MIN_SUPPORT + impact==HIGH
+        # 3 = Overlap ----> occurrene > MIN_SUPPORT + cancer gene
+        # 4 = Overlap ----> occurrene > MIN_SUPPORT + impact==HIGH + cancer gene
+        # 5 = Overlap ----> occurrene > 20% + cancer gene
+        # 5 = Overlap ----> occurrene > 20% + cancer gene + impact==HIGH
 
         VCF_WRITER=pyvcf.Writer(OUTPUT, VCF_READER, lineterminator='\n')
         GO={}
