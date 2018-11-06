@@ -2,18 +2,32 @@ import requests
 import re
 import json
 import vcf as pyvcf
+import sys
 
-a = []
-li=[4, 3, 3, 3, 5]
+TRY=1
+while TRY < 10:
+    print (TRY)
+    if TRY==5:
+        Y=5
+    try:
+        X=Y
+        print(X)
+        break
+    except:
+        print ("NO")
+        if TRY==7:
+            sys.exit("Error while requesting from ICGC database after 3 tries")
+        TRY +=1
 
-x=0
-for n in li:
-    if n>x:
-        x=n
-        a.insert(0, n)
-    elif n>=3:
-        a.append(n)
-print (a)
+print ("BLALBLABLA")
+# x=0
+# for n in li:
+#     if n>x:
+#         x=n
+#         a.insert(0, n)
+#     elif n>=3:
+#         a.append(n)
+# print (a)
 
 # SERVER_CASES="https://api.gdc.cancer.gov/cases"
 # FILTERS_CASES={"op":"AND","content":[
