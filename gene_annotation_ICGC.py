@@ -76,8 +76,10 @@ def regions_from_vcf(INPUT_VCF):
             BEGIN_CHROM = str(record.CHROM)
             BEGIN_POS = record.POS
             ID=str(record.ID)
-            SV_DATA[ID]={"REGION":[]}
-
+            try:
+                SV_DATA[ID]={"REGION":[], "LENGTH":int(record.INFO["SVLEN"][0])}
+            except:
+                SV_DATA[ID]={"REGION":[]}
             if "INS" in str(record.ALT[0]):
                 REGION_START=BEGIN_POS-FLANK
                 REGION_END=BEGIN_POS+1+FLANK
@@ -460,11 +462,13 @@ CANCERTYPE=args.cancertype
 CANCERTYPE=CANCERTYPE.capitalize()
 
 REGIONS=regions_from_vcf(VCF_IN)
-prostate_genes="/home/cog/sdeblank/Downloads/Prostate_SVs.csv"
+prostate_genes="/home/cog/sdeblank/Downloads/"+CANCERTYPE+"_SVs.csv"
 with open(prostate_genes, "r") as file:
     SV=[]
     TRA=[]
+    asd=0
     for line in file:
+        asd+=1
         if not line.startswith("SAMPLE"):
             line=line.strip()
             columns=line.split(",")
@@ -482,18 +486,23 @@ with open(prostate_genes, "r") as file:
                 TRA.append({"Begin_chrom":str(begin_chrom), "Start":str(begin_pos), "End_chrom":str(end_chrom), "End":str(end_pos)})
 
 overlap=[]
+print (asd)
 for ID in REGIONS:
 
     regions=REGIONS[ID]["REGION"]
-    if len(regions)==1:
+    if len(regions)==1 and REGIONS[ID]["LENGTH"] > 10000:
+
         for sv in SV:
             if (regions[0]["Chrom"]== sv["Chrom"] and
-            int(regions[0]["Start"])<int(sv["End"]) and
-            int(regions[0]["End"])>int(sv["Start"]) and
+            int(regions[0]["Start"])<int(sv["Start"])+100 and
+            int(regions[0]["End"])>int(sv["End"])-100 and
             int(regions[0]["End"])>int(regions[0]["Start"])):
-                if ID not in overlap:
-                    continue
-                    overlap.append(ID)
+            # if (regions[0]["Chrom"]== sv["Chrom"] and
+            # (int(regions[0]["Start"])<int(sv["Start"])+1000 and int(regions[0]["Start"])>int(sv["Start"])-1000000) and
+            # (int(regions[0]["End"])>int(sv["End"])-1000 and int(regions[0]["End"])<int(sv["End"])+1000000) and
+            # int(regions[0]["End"])>int(regions[0]["Start"])):
+                if int(ID) not in overlap:
+                    overlap.append(int(ID))
     elif len(regions)==2:
         for tra in TRA:
             # print (tra["Start"])
@@ -507,24 +516,32 @@ for ID in REGIONS:
             # regions[1]["Chrom"]== tra["End_chrom"] and
             # (abs(int(tra["Start"]) - int(regions[0]["Start"])+FLANK) < 1000 or abs(int(tra["End"]) - int(regions[0]["Start"])+FLANK) < 1000) or
             # (abs(int(tra["Start"]) - int(regions[1]["Start"])+FLANK) < 1000 or abs(int(tra["End"]) - int(regions[1]["Start"])+FLANK) < 1000)):
-                if ID not in overlap:
-                    overlap.append(ID)
+                if int(ID) not in overlap:
+                    overlap.append(int(ID))
 
-print (overlap)
+print (str(sorted(overlap)))
 print (len(overlap))
-if '139612' in overlap:
+if 548372 in overlap:
     print ("JA")
 else:
     print("Nee")
-if '143567' in overlap:
+if 555300 in overlap:
     print ("JA")
 else:
     print("Nee")
-if '65587' in overlap:
+if 558358 in overlap:
     print ("JA")
 else:
     print("Nee")
-if '143544' in overlap:
+if 525958 in overlap:
+    print ("JA")
+else:
+    print("Nee")
+if 28902 in overlap:
+    print ("JA")
+else:
+    print("Nee")
+if 310074 in overlap:
     print ("JA")
 else:
     print("Nee")
