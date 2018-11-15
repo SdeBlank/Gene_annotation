@@ -5,6 +5,7 @@ import json
 import vcf as pyvcf
 import sys
 import argparse
+import csv
 
 parser = argparse.ArgumentParser()
 parser = argparse.ArgumentParser(description='Put here a description.')
@@ -452,6 +453,74 @@ def vcf_annotate_tcga_genes_overlap(INPUT_VCF, OUTPUT_VCF, ICGC_GENES, REGIONS):
         print ("Gene overlap but none are in ICGC database: ",count_gene_no_overlap)
         print ("No gene overlap: ", count_no_gene)
 
+#############################################   OVERLAP COSMIC   ##############################################
+def overlap_COSMIC(REGIONS):
+    prostate_genes="/home/cog/sdeblank/Downloads/"+CANCERTYPE+"_SVs.csv"
+    with open(prostate_genes, "r") as file:
+        SV=[]
+        TRA=[]
+        asd=0
+        for line in file:
+            asd+=1
+            if not line.startswith("SAMPLE"):
+                line=line.strip()
+                columns=line.split(",")
+                begin_chrom=columns[15]
+                end_chrom=columns[19]
+                #if columns[16]==columns[17] and columns[20]==columns[21]:
+                begin_pos=columns[16]
+                end_pos=columns[21]
+                #else:
+                    #print ("begin position not equal in both columns")
+
+                if begin_chrom==end_chrom:
+                    SV.append({"Chrom":str(begin_chrom), "Start":str(begin_pos), "End":str(end_pos)})
+                else:
+                    TRA.append({"Begin_chrom":str(begin_chrom), "Start":str(begin_pos), "End_chrom":str(end_chrom), "End":str(end_pos)})
+
+    overlap=[]
+    # print (asd)
+    for ID in REGIONS:
+
+        regions=REGIONS[ID]["REGION"]
+        if len(regions)==1 and REGIONS[ID]["LENGTH"] > 200:
+
+            for sv in SV:
+                if (regions[0]["Chrom"]== sv["Chrom"] and
+                int(regions[0]["Start"])<int(sv["Start"])+100 and
+                int(regions[0]["End"])>int(sv["End"])-100 and
+                int(regions[0]["End"])>int(regions[0]["Start"])):
+                # if (regions[0]["Chrom"]== sv["Chrom"] and
+                # (int(regions[0]["Start"])<int(sv["Start"])+1000 and int(regions[0]["Start"])>int(sv["Start"])-1000000) and
+                # (int(regions[0]["End"])>int(sv["End"])-1000 and int(regions[0]["End"])<int(sv["End"])+1000000) and
+                # int(regions[0]["End"])>int(regions[0]["Start"])):
+                    if int(ID) not in overlap:
+                        overlap.append(int(ID))
+        elif len(regions)==2:
+            for tra in TRA:
+                # print (tra["Start"])
+                # print (tra["End"])
+                # print (regions[0]["Start"]+FLANK)
+                # print (regions[1]["Start"]+FLANK)
+                if ((regions[0]["Chrom"]== tra["Begin_chrom"] and abs(int(tra["Start"]) - int(regions[0]["Start"])+FLANK) < 1000) or
+                (regions[0]["Chrom"]== tra["End_chrom"] and abs(int(tra["End"]) - int(regions[0]["Start"])+FLANK) < 1000) or
+                (regions[1]["Chrom"]== tra["Begin_chrom"] and abs(int(tra["Start"]) - int(regions[1]["Start"])+FLANK) < 1000) or
+                (regions[1]["Chrom"]== tra["End_chrom"] and abs(int(tra["End"]) - int(regions[1]["Start"])+FLANK) < 1000)):
+                # regions[1]["Chrom"]== tra["End_chrom"] and
+                # (abs(int(tra["Start"]) - int(regions[0]["Start"])+FLANK) < 1000 or abs(int(tra["End"]) - int(regions[0]["Start"])+FLANK) < 1000) or
+                # (abs(int(tra["Start"]) - int(regions[1]["Start"])+FLANK) < 1000 or abs(int(tra["End"]) - int(regions[1]["Start"])+FLANK) < 1000)):
+                    if int(ID) not in overlap:
+                        overlap.append(int(ID))
+
+    print (str(sorted(overlap)))
+    print (len(overlap))
+
+
+    for item in tested:
+        print(item in overlap)
+
+
+    return (overlap)
 
 #############################################   RUNNING CODE   #############################################
 VCF_IN=args.vcf
@@ -462,94 +531,59 @@ CANCERTYPE=args.cancertype
 CANCERTYPE=CANCERTYPE.capitalize()
 
 REGIONS=regions_from_vcf(VCF_IN)
-prostate_genes="/home/cog/sdeblank/Downloads/"+CANCERTYPE+"_SVs.csv"
-with open(prostate_genes, "r") as file:
-    SV=[]
-    TRA=[]
-    asd=0
-    for line in file:
-        asd+=1
-        if not line.startswith("SAMPLE"):
-            line=line.strip()
-            columns=line.split(",")
-            begin_chrom=columns[15]
-            end_chrom=columns[19]
-            #if columns[16]==columns[17] and columns[20]==columns[21]:
-            begin_pos=columns[16]
-            end_pos=columns[21]
-            #else:
-                #print ("begin position not equal in both columns")
 
-            if begin_chrom==end_chrom:
-                SV.append({"Chrom":str(begin_chrom), "Start":str(begin_pos), "End":str(end_pos)})
-            else:
-                TRA.append({"Begin_chrom":str(begin_chrom), "Start":str(begin_pos), "End_chrom":str(end_chrom), "End":str(end_pos)})
+tested=[35782,145814,142168,166318,121298,167409,8828,153004,163347,77878,142391,144454,8823]
+#tested=[87572,230835,36528,176386,119589,232917,117253,130405,12197,235857,68940,236673,230973,233979,237366,240965]
+#tested=[361436,548372,233450,35426,478984,426283,188077,555300,558358,28927,537919,485747,424600,525958,28902,440501,310074,304384,400387,556726,556808,557351,557453,465524,543783]
 
-overlap=[]
-print (asd)
+
+overlap=overlap_COSMIC(REGIONS)
+
+SV=[]
+cancer_genes="/home/cog/sdeblank/Downloads/cancer_gene_census.csv"
+with open(cancer_genes, "r") as file:
+    next(file)
+    reader = csv.reader(file, delimiter=',')
+    for row in reader:
+        region=row[3]
+        if region.split(":")[1] != "-" and row[8] != "yes":
+            chrom=region.split(":")[0]
+            start=region.split(":")[1].split("-")[0]
+            end=region.split(":")[1].split("-")[1]
+            SV.append({"Chrom":str(chrom), "Start":str(start), "End":str(end)})
+
+overlap2=[]
 for ID in REGIONS:
-
     regions=REGIONS[ID]["REGION"]
-    if len(regions)==1 and REGIONS[ID]["LENGTH"] > 10000:
-
+    if len(regions)==1:
         for sv in SV:
-            if (regions[0]["Chrom"]== sv["Chrom"] and
-            int(regions[0]["Start"])<int(sv["Start"])+100 and
-            int(regions[0]["End"])>int(sv["End"])-100 and
+            if (regions[0]["Chrom"]==sv["Chrom"] and
+            int(regions[0]["Start"])<int(sv["End"])+100000 and
+            int(regions[0]["End"])>int(sv["Start"])-100000 and
             int(regions[0]["End"])>int(regions[0]["Start"])):
             # if (regions[0]["Chrom"]== sv["Chrom"] and
             # (int(regions[0]["Start"])<int(sv["Start"])+1000 and int(regions[0]["Start"])>int(sv["Start"])-1000000) and
             # (int(regions[0]["End"])>int(sv["End"])-1000 and int(regions[0]["End"])<int(sv["End"])+1000000) and
             # int(regions[0]["End"])>int(regions[0]["Start"])):
-                if int(ID) not in overlap:
-                    overlap.append(int(ID))
+                if int(ID) not in overlap2:
+                    overlap2.append(int(ID))
     elif len(regions)==2:
-        for tra in TRA:
-            # print (tra["Start"])
-            # print (tra["End"])
-            # print (regions[0]["Start"]+FLANK)
-            # print (regions[1]["Start"]+FLANK)
-            if ((regions[0]["Chrom"]== tra["Begin_chrom"] and abs(int(tra["Start"]) - int(regions[0]["Start"])+FLANK) < 1000) or
-            (regions[0]["Chrom"]== tra["End_chrom"] and abs(int(tra["End"]) - int(regions[0]["Start"])+FLANK) < 1000) or
-            (regions[1]["Chrom"]== tra["Begin_chrom"] and abs(int(tra["Start"]) - int(regions[1]["Start"])+FLANK) < 1000) or
-            (regions[1]["Chrom"]== tra["End_chrom"] and abs(int(tra["End"]) - int(regions[1]["Start"])+FLANK) < 1000)):
-            # regions[1]["Chrom"]== tra["End_chrom"] and
-            # (abs(int(tra["Start"]) - int(regions[0]["Start"])+FLANK) < 1000 or abs(int(tra["End"]) - int(regions[0]["Start"])+FLANK) < 1000) or
-            # (abs(int(tra["Start"]) - int(regions[1]["Start"])+FLANK) < 1000 or abs(int(tra["End"]) - int(regions[1]["Start"])+FLANK) < 1000)):
-                if int(ID) not in overlap:
-                    overlap.append(int(ID))
-
-print (str(sorted(overlap)))
-print (len(overlap))
-if 548372 in overlap:
-    print ("JA")
-else:
-    print("Nee")
-if 555300 in overlap:
-    print ("JA")
-else:
-    print("Nee")
-if 558358 in overlap:
-    print ("JA")
-else:
-    print("Nee")
-if 525958 in overlap:
-    print ("JA")
-else:
-    print("Nee")
-if 28902 in overlap:
-    print ("JA")
-else:
-    print("Nee")
-if 310074 in overlap:
-    print ("JA")
-else:
-    print("Nee")
-
+        for sv in SV:
+            if (regions[0]["Chrom"]==sv["Chrom"] and
+            ((int(regions[0]["Start"]) > int(sv["Start"])-10000 and int(regions[0]["Start"]) < int(sv["End"]) +10000) or
+            (int(regions[0]["End"]) > int(sv["Start"]) -10000 and int(regions[0]["End"]) < int(sv["End"]) +10000))):
+                if int(ID) not in overlap2:
+                    overlap2.append(int(ID))
             # (int(regions[0]["Start"])<int(sv["Start"]) and int(regions[0]["End"])>int(sv["End"])) or
             # ((int(regions[0]["Start"])>int(sv["Start"]) and not int(regions[0]["Start"])>int(sv["End"])) and (int(regions[0]["End"])<int(sv["End"]) and not int(regions[0]["End"]) < int(sv["Start"]))) or
             # (int(regions[0]["Start"])>int(sv["Start"]) and int(regions[0]["End"])<int(sv["End"])) or
+print (str(sorted(overlap2)))
+print (len(overlap2))
+for item in tested:
+    print(item in overlap2)
 
+# print (sorted(set(overlap).intersection(overlap2)))
+# print (len(sorted(set(overlap).intersection(overlap2))))
 # OVERLAP=overlap_ENSEMBLE(REGIONS)
 # KNOWN_GENES=create_ICGC_gene_list(CANCERTYPE, MIN_SUPPORT)
 # vcf_annotate_tcga_genes_overlap(VCF_IN, VCF_GENE_SELECTED, KNOWN_GENES, OVERLAP)
