@@ -64,22 +64,22 @@ with open(VCF, "r") as input:
         elif int(primer["ICGC_SCORE"]) == 0 or int(primer["SVLEN"]) <= 1000:
             score_0.append(primer)
 
-    # for primer in score_0:
-    #     if int(primer["SVLEN"]) > 10000:
-    #         score_1.append(primer)
-    #         score_0.remove(primer)
-    # for primer in score_1:
-    #     if int(primer["SVLEN"]) > 50000:
-    #         score_3.append(primer)
-    #         score_1.remove(primer)
-    # for primer in score_3:
-    #     if int(primer["SVLEN"]) > 200000:
-    #         score_5.append(primer)
-    #         score_3.remove(primer)
-        # for primer in score_3:
-        #     if int(primer["SVLEN"]) > 10000000:
-        #         score_5.append(primer)
-        #         score_3.remove(primer)
+    for primer in score_0:
+        if int(primer["SVLEN"]) > 10000:
+            score_1.append(primer)
+            score_0.remove(primer)
+    for primer in score_1:
+        if int(primer["SVLEN"]) > 50000:
+            score_3.append(primer)
+            score_1.remove(primer)
+    for primer in score_3:
+        if int(primer["SVLEN"]) > 200000:
+            score_5.append(primer)
+            score_3.remove(primer)
+        for primer in score_3:
+            if int(primer["SVLEN"]) > 10000000:
+                score_5.append(primer)
+                score_3.remove(primer)
 
     score_5=sorted(score_5, key=lambda k: k['SVLEN'], reverse=True)
     score_3=sorted(score_3, key=lambda k: k['SVLEN'], reverse=True)
@@ -87,8 +87,11 @@ with open(VCF, "r") as input:
     score_0=sorted(score_0, key=lambda k: k['SVLEN'], reverse=True)
 
     SCORE=score_5+score_3+score_1+score_0
+    SVLEN_SCORE=sorted(primers, key=lambda k: k['SVLEN'], reverse=True)
 
     for primer in SCORE:
+        print (str(primer["ID"]) + "\t" + str(primer["TYPE"]) + "\t" + str(primer["ICGC_SCORE"]) + "\t" + str(primer["SVLEN"]))
+    for primer in SVLEN_SCORE:
         print (str(primer["ID"]) + "\t" + str(primer["TYPE"]) + "\t" + str(primer["ICGC_SCORE"]) + "\t" + str(primer["SVLEN"]))
 
 with open(VCF, "r") as vcf_input, open(RANKED_VCF, "w") as vcf_output:
