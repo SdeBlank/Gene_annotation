@@ -61,7 +61,7 @@ with open(VCF, "r") as input:
                 score_4.append(primer)
             else:
                 score_0.append(primer)
-                
+
         elif int(primer["ICGC_SCORE"]) >= 3:
             if int(primer["SVLEN"]) >= 200000:
                 score_5.append(primer)
