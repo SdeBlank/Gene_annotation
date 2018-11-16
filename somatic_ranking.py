@@ -108,6 +108,10 @@ with open(VCF, "r") as input:
     SCORE=score_6+score_5+score_4+score_3+score_2+score_1+score_0
     SVLEN_SCORE=sorted(primers, key=lambda k: k['SVLEN'], reverse=True)
 
+    # for i in range(20):
+    #     rank=SCORE[i]
+    #     len=SVLEN_SCORE[i]
+    #     print (str(rank["ID"]) + "\t" + str(len["ID"]))
     for primer in SCORE:
         print (str(primer["ID"]) + "\t" + str(primer["TYPE"]) + "\t" + str(primer["ICGC_SCORE"]) + "\t" + str(primer["SVLEN"]))
     for primer in SVLEN_SCORE:
