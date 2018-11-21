@@ -93,6 +93,8 @@ with open(VCF, "r") as input:
                 score_1.append(primer)
             elif int(primer["SVLEN"]) == 0:
                 score_0.append(primer)
+            else:
+                score_0.append(primer)
         else:
             print ("ERROR: UNKNOWN SCORE")
 

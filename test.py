@@ -4,22 +4,42 @@ import json
 import vcf as pyvcf
 import sys
 
-TRY=1
-while TRY < 10:
-    print (TRY)
-    if TRY==5:
-        Y=5
-    try:
-        X=Y
-        print(X)
-        break
-    except:
-        print ("NO")
-        if TRY==7:
-            sys.exit("Error while requesting from ICGC database after 3 tries")
-        TRY +=1
+file1="/data/sharc/truth_ids"
+file2="/data/sharc/colo829.full.ranked"
+file3="/data/sharc/colo829.full.ranked.truth"
 
-print ("BLALBLABLA")
+with open(file1, "r") as file1, open(file2, "r") as file2, open(file3, "w") as output:
+    truth=[]
+    for id in file1:
+        id=id.strip()
+        truth.append(str(id))
+    for line in file2:
+        columns=line.strip().split("\t")
+        if str(columns[0]) in truth:
+            print ("JA")
+            columns.append("TRUTH")
+            output.write(str("\t".join(columns))+"\n")
+        else:
+            output.write(line)
+
+
+
+# TRY=1
+# while TRY < 10:
+#     print (TRY)
+#     if TRY==5:
+#         Y=5
+#     try:
+#         X=Y
+#         print(X)
+#         break
+#     except:
+#         print ("NO")
+#         if TRY==7:
+#             sys.exit("Error while requesting from ICGC database after 3 tries")
+#         TRY +=1
+#
+# print ("BLALBLABLA")
 # x=0
 # for n in li:
 #     if n>x:
