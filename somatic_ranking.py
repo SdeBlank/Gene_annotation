@@ -55,10 +55,8 @@ with open(VCF, "r") as input:
                 score_6.append(primer)
             elif int(primer["SVLEN"]) >= 1000:
                 score_5.append(primer)
-            elif int(primer["SVLEN"]) == 0 and int(primer["ICGC_SCORE"] == 6):
+            elif int(primer["SVLEN"]) == 0:
                 score_5.append(primer)
-            elif int(primer["SVLEN"]) == 0 and int(primer["ICGC_SCORE"] == 5):
-                score_4.append(primer)
             else:
                 score_0.append(primer)
 
